@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            width: 350px;
+            text-align: center;
+        }
+        h2 {
+            margin-bottom: 15px;
+        }
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .btn {
+            width: 95%;
+            padding: 10px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .hidden {
+            display: none;
+        }
+        #next-btn {
+            display: none;
+            background: #28a745;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="login-page">
+        <h2>Login</h2>
+        <input type="text" id="login-username" placeholder="Username" />
+        <p class="error" id="login-error"></p>
+        <input type="password" id="login-password" placeholder="Password" />
+        <button class="btn" onclick="login()">Login</button>
+        <p>Don't have an account? <a href="#" onclick="showSignup()">Sign up</a></p>
+    </div>
+
+    <div class="container hidden" id="signup-page">
+        <h2>Sign Up</h2>
+        <input type="text" id="signup-username" placeholder="Choose Username" />
+        <input type="password" id="signup-password" placeholder="Choose Password" />
+        <button class="btn" onclick="signup()">Sign Up</button>
+        <p>Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+    </div>
+
+    <div class="container hidden" id="subject-page">
+        <h2>Choose a Subject</h2>
+        <button class="btn" onclick="selectSubject('general')">General Knowledge</button>
+        <button class="btn" onclick="selectSubject('science')">Science</button>
+    </div>
+
+    <div class="container hidden" id="quiz-page">
+        <h2 id="question">Question text</h2>
+        <div id="answer-buttons"></div>
+        <p id="explanation" style="margin-top:10px;color:#555;"></p>
+        <button id="next-btn" class="btn">Next</button>
+    </div>
+
+    <script>
+        // All quiz data organized by subject
+        const quizData = {
+            general: [
+                {
+                    question: "What is the capital of France?",
+                    answers: [
+                        { text: "Berlin", correct: false },
+                        { text: "Madrid", correct: false },
+                        { text: "Paris", correct: true },
+                        { text: "Rome", correct: false }
+                    ],
+                    explanation: "Paris is the capital and most populous city of France."
+                },
+                {
+                    question: "Which language is used for web apps?",
+                    answers: [
+                        { text: "Python", correct: false },
+                        { text: "JavaScript", correct: true },
+                        { text: "C++", correct: false },
+                        { text: "Java", correct: false }
+                    ],
+                    explanation: "JavaScript is the primary language for interactive web applications."
+                },
+                {
+                    question: "Who developed Microsoft?",
+                    answers: [
+                        { text: "Elon Musk", correct: false },
+                        { text: "Steve Jobs", correct: false },
+                        { text: "Bill Gates", correct: true },
+                        { text: "Mark Zuckerberg", correct: false }
+                    ],
+                    explanation: "Microsoft was founded by Bill Gates and Paul Allen in 1975."
+                }
+            ],
+            science: [
+                {
+                    question: "What is the chemical symbol for water?",
+                    answers: [
+                        { text: "O2", correct: false },
+                        { text: "H2O", correct: true },
+                        { text: "CO2", correct: false },
+                        { text: "NaCl", correct: false }
+                    ],
+                    explanation: "The chemical formula for water is H2O."
+                },
+                {
+                    question: "What is the largest planet in our solar system?",
+                    answers: [
+                        { text: "Earth", correct: false },
+                        { text: "Jupiter", correct: true },
+                        { text: "Mars", correct: false },
+                        { text: "Saturn", correct: false }
+                    ],
+                    explanation: "Jupiter is the largest planet, with a mass more than two and a half times that of all the other planets in the solar system combined."
+                }
+            ]
+        };
+
+        // Elements
+        const loginPage = document.getElementById("login-page");
+        const signupPage = document.getElementById("signup-page");
+        const subjectPage = document.getElementById("subject-page");
+        const quizPage = document.getElementById("quiz-page");
+        const loginError = document.getElementById("login-error");
+        const questionElement = document.getElementById("question");
+        const answerButtons = document.getElementById("answer-buttons");
+        const nextButton = document.getElementById("next-btn");
+        const explanationEl = document.getElementById("explanation");
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let questions = [];
+
+        // --- Auth System ---
+        function showSignup() {
+            loginPage.classList.add("hidden");
+            signupPage.classList.remove("hidden");
+        }
+
+        function showLogin() {
+            signupPage.classList.add("hidden");
+            quizPage.classList.add("hidden");
+            subjectPage.classList.add("hidden");
+            loginPage.classList.remove("hidden");
+        }
+
+        function signup() {
+            const username = document.getElementById("signup-username").value;
+            const password = document.getElementById("signup-password").value;
+            if (username && password) {
+                localStorage.setItem("user", JSON.stringify({ username, password }));
+                localStorage.setItem("session", Date.now());
+                signupPage.classList.add("hidden");
+                showSubjectSelection();
+            }
+        }
+
+        function login() {
+            const username = document.getElementById("login-username").value;
+            const password = document.getElementById("login-password").value;
+            const user = JSON.parse(localStorage.getItem("user"));
+
+            if (user && username === user.username && password === user.password) {
+                localStorage.setItem("session", Date.now());
+                loginPage.classList.add("hidden");
+                showSubjectSelection();
+            } else {
+                loginError.textContent = "Incorrect username or password.";
+            }
+        }
+
+        function checkSessionTimeout() {
+            const lastSession = localStorage.getItem("session");
+            const now = Date.now();
+            const twoHours = 2 * 60 * 60 * 1000;
+
+            if (lastSession && (now - lastSession > twoHours)) {
+                alert("Your session has timed out. Please log in again.");
+                localStorage.removeItem("session");
+                showLogin();
+                return true;
+            }
+            return false;
+        }
+
+        // --- Subject Selection System ---
+        function showSubjectSelection() {
+            if (checkSessionTimeout()) return;
+            loginPage.classList.add("hidden");
+            signupPage.classList.add("hidden");
+            quizPage.classList.add("hidden");
+            subjectPage.classList.remove("hidden");
+        }
+
+        function selectSubject(subjectName) {
+            if (checkSessionTimeout()) return;
+            questions = quizData[subjectName];
+            startQuiz();
+        }
+
+        // --- Quiz System ---
+        function startQuiz() {
+            subjectPage.classList.add("hidden");
+            quizPage.classList.remove("hidden");
+            currentQuestionIndex = 0;
+            score = 0;
+            nextButton.innerHTML = "Next";
+            showQuestion();
+        }
+
+        function showQuestion() {
+            if (checkSessionTimeout()) return;
+            resetState();
+            let currentQuestion = questions[currentQuestionIndex];
+            let questionNo = currentQuestionIndex + 1;
+            questionElement.innerHTML = questionNo + ". " + currentQuestion.question;
+
+            currentQuestion.answers.forEach(answer => {
+                const button = document.createElement("button");
+                button.innerHTML = answer.text;
+                button.classList.add("btn");
+                answerButtons.appendChild(button);
+                if (answer.correct) {
+                    button.dataset.correct = answer.correct;
+                }
+                button.addEventListener("click", selectAnswer);
+            });
+        }
+
+        function resetState() {
+            nextButton.style.display = "none";
+            explanationEl.textContent = "";
+            while (answerButtons.firstChild) {
+                answerButtons.removeChild(answerButtons.firstChild);
+            }
+        }
+
+        function selectAnswer(e) {
+            if (checkSessionTimeout()) return;
+            const selectedBtn = e.target;
+            const isCorrect = selectedBtn.dataset.correct === "true";
+            if (isCorrect) {
+                selectedBtn.style.background = "#28a745";
+                score++;
+            } else {
+                selectedBtn.style.background = "#dc3545";
+            }
+
+            Array.from(answerButtons.children).forEach(button => {
+                if (button.dataset.correct === "true") {
+                    button.style.background = "#28a745";
+                }
+                button.disabled = true;
+            });
+
+            explanationEl.textContent = questions[currentQuestionIndex].explanation;
+            nextButton.style.display = "block";
+        }
+
+        function showScore() {
+            resetState();
+            questionElement.innerHTML = `You scored ${score} out of ${questions.length}!`;
+            nextButton.innerHTML = "Play Again";
+            nextButton.style.display = "block";
+        }
+
+        function handleNextButton() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                showQuestion();
+            } else {
+                showScore();
+            }
+        }
+
+        nextButton.addEventListener("click", () => {
+            if (checkSessionTimeout()) return;
+            if (nextButton.innerHTML === "Play Again") {
+                showSubjectSelection();
+            } else {
+                handleNextButton();
+            }
+        });
+
+        // Initial Page Load Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            showLogin();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quiz Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .quiz-container {
+      background: white;
+      width: 480px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 20px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 5px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .btn:hover {
+      background: #0056b3;
+    }
+    #next-btn {
+      display: none;
+      background: #28a745;
+    }
+    #timer {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #ff0000;
+      font-weight: bold;
+    }
+    #subject-screen {
+      display: block;
+    }
+    #quiz-screen {
+      display: none;
+    }
+    #explanation {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f1f1f1;
+      border-left: 5px solid #007bff;
+      display: none;
+      text-align: left;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Subject Selection -->
+  <div id="subject-screen" class="quiz-container">
+    <h2>Select a Subject</h2>
+    <button class="btn" onclick="startQuiz('general')">General Knowledge</button>
+    <button class="btn" onclick="startQuiz('science')">Science</button>
+    <button class="btn" onclick="startQuiz('history')">History</button>
+  </div>
+
+  <!-- Quiz Screen -->
+  <div id="quiz-screen" class="quiz-container">
+    <div id="timer">Time left: 15s</div>
+    <h2 id="question">Question text</h2>
+    <div id="answer-buttons"></div>
+    <div id="explanation"></div>
+    <button id="next-btn" class="btn">Next</button>
+  </div>
+
+  <script>
+    // Question sets with explanations
+    const allQuestions = {
+      general: [
+        {
+          question: "What is the capital of France?",
+          answers: [
+            { text: "Berlin", correct: false },
+            { text: "Madrid", correct: false },
+            { text: "Paris", correct: true },
+            { text: "Rome", correct: false }
+          ],
+          explanation: "Paris is the capital of France, known as the 'City of Light'."
+        },
+        {
+          question: "Which language is used for web apps?",
+          answers: [
+            { text: "Python", correct: false },
+            { text: "JavaScript", correct: true },
+            { text: "C++", correct: false },
+            { text: "Java", correct: false }
+          ],
+          explanation: "JavaScript is the main programming language that runs in web browsers."
+        }
+      ],
+      science: [
+        {
+          question: "What planet is known as the Red Planet?",
+          answers: [
+            { text: "Venus", correct: false },
+            { text: "Mars", correct: true },
+            { text: "Jupiter", correct: false },
+            { text: "Saturn", correct: false }
+          ],
+          explanation: "Mars is called the Red Planet due to iron oxide (rust) on its surface."
+        },
+        {
+          question: "H2O is the chemical formula for what?",
+          answers: [
+            { text: "Oxygen", correct: false },
+            { text: "Water", correct: true },
+            { text: "Hydrogen", correct: false },
+            { text: "Salt", correct: false }
+          ],
+          explanation: "H2O is the chemical formula for water, made of two hydrogen atoms and one oxygen atom."
+        }
+      ],
+      history: [
+        {
+          question: "Who was the first President of the USA?",
+          answers: [
+            { text: "Abraham Lincoln", correct: false },
+            { text: "George Washington", correct: true },
+            { text: "Thomas Jefferson", correct: false },
+            { text: "John Adams", correct: false }
+          ],
+          explanation: "George Washington served as the first President of the United States (1789–1797)."
+        },
+        {
+          question: "In which year did World War II end?",
+          answers: [
+            { text: "1940", correct: false },
+            { text: "1945", correct: true },
+            { text: "1950", correct: false },
+            { text: "1939", correct: false }
+          ],
+          explanation: "World War II ended in 1945 after the surrender of Germany and Japan."
+        }
+      ]
+    };
+
+    // DOM elements
+    const questionElement = document.getElementById("question");
+    const answerButtons = document.getElementById("answer-buttons");
+    const nextButton = document.getElementById("next-btn");
+    const timerElement = document.getElementById("timer");
+    const subjectScreen = document.getElementById("subject-screen");
+    const quizScreen = document.getElementById("quiz-screen");
+    const explanationBox = document.getElementById("explanation");
+
+    // State
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let timeLeft = 15;
+    let timer;
+
+    function startQuiz(subject) {
+      questions = allQuestions[subject];
+      subjectScreen.style.display = "none";
+      quizScreen.style.display = "block";
+      currentQuestionIndex = 0;
+      score = 0;
+      nextButton.innerHTML = "Next";
+      showQuestion();
+    }
+
+    function showQuestion() {
+      resetState();
+      let currentQuestion = questions[currentQuestionIndex];
+      let questionNo = currentQuestionIndex + 1;
+      questionElement.innerHTML = questionNo + ". " + currentQuestion.question;
+
+      currentQuestion.answers.forEach(answer => {
+        const button = document.createElement("button");
+        button.innerHTML = answer.text;
+        button.classList.add("btn");
+        answerButtons.appendChild(button);
+        if (answer.correct) {
+          button.dataset.correct = answer.correct;
+        }
+        button.addEventListener("click", selectAnswer);
+      });
+
+      startTimer();
+    }
+
+    function resetState() {
+      clearInterval(timer);
+      explanationBox.style.display = "none";
+      nextButton.style.display = "none";
+      while (answerButtons.firstChild) {
+        answerButtons.removeChild(answerButtons.firstChild);
+      }
+    }
+
+    function startTimer() {
+      timeLeft = 15;
+      timerElement.innerHTML = `Time left: ${timeLeft}s`;
+      timer = setInterval(() => {
+        timeLeft--;
+        timerElement.innerHTML = `Time left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          handleTimeOut();
+        }
+      }, 1000);
+    }
+
+    function handleTimeOut() {
+      Array.from(answerButtons.children).forEach(button => {
+        if (button.dataset.correct === "true") {
+          button.style.background = "#28a745"; // highlight correct
+        }
+        button.disabled = true;
+      });
+      showExplanation();
+      nextButton.style.display = "block";
+    }
+
+    function selectAnswer(e) {
+      clearInterval(timer);
+      const selectedBtn = e.target;
+      const isCorrect = selectedBtn.dataset.correct === "true";
+      if (isCorrect) {
+        selectedBtn.style.background = "#28a745";
+        score++;
+      } else {
+        selectedBtn.style.background = "#dc3545";
+      }
+      Array.from(answerButtons.children).forEach(button => {
+        if (button.dataset.correct === "true") {
+          button.style.background = "#28a745";
+        }
+        button.disabled = true;
+      });
+      showExplanation();
+      nextButton.style.display = "block";
+    }
+
+    function showExplanation() {
+      const currentQuestion = questions[currentQuestionIndex];
+      explanationBox.innerHTML = "<b>Explanation:</b> " + currentQuestion.explanation;
+      explanationBox.style.display = "block";
+    }
+
+    function showScore() {
+      resetState();
+      timerElement.innerHTML = "";
+      questionElement.innerHTML = `You scored ${score} out of ${questions.length}!`;
+      nextButton.innerHTML = "Back to Subjects";
+      nextButton.style.display = "block";
+    }
+
+    function handleNextButton() {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < questions.length) {
+        showQuestion();
+      } else {
+        showScore();
+      }
+    }
+
+    nextButton.addEventListener("click", () => {
+      if (currentQuestionIndex < questions.length) {
+        handleNextButton();
+      } else {
+        // Restart quiz -> back to subject selection
+        quizScreen.style.display = "none";
+        subjectScreen.style.display = "block";
+      }
+    });
+  </script>
+
+</body>
+</html>

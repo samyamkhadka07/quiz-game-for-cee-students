@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CEE Entrance Quiz Game</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f9;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+.container{background:#fff;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.2);width:420px;text-align:center}
+h2{margin-bottom:15px}
+input{width:90%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:5px}
+.btn{width:95%;padding:10px;margin:8px 0;border:none;border-radius:5px;background:#007bff;color:#fff;cursor:pointer}
+.btn:hover{background:#0056b3}
+.hidden{display:none}
+#error{color:red;font-size:14px;margin-top:5px}
+#next-btn{display:none;background:#28a745}
+#timer{font-size:22px;font-weight:bold;color:#dc3545;margin-top:10px}
+#answer-buttons{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.option-btn{padding:10px;border-radius:6px;border:none;background:#e9ecef;cursor:pointer;text-align:left}
+.option-btn:hover{background:#d6d8db}
+.explanation{margin-top:10px;color:#555}
+</style>
+</head>
+<body>
+<div class="container" id="login-page">
+    <h2>Login</h2>
+    <input id="login-username" placeholder="Username" type="text" />
+    <p id="error"></p>
+    <input id="login-password" placeholder="Password" type="password" />
+    <button class="btn" type="button" onclick="login()">Login</button>
+    <p>Don't have an account? <a href="#" onclick="showSignup()">Sign up</a></p>
+</div>
+
+<div class="container hidden" id="signup-page">
+        <h2>Sign Up</h2>
+        <input id="signup-username" placeholder="Choose Username" type="text" />
+        <input id="signup-password" placeholder="Choose Password" type="password" />
+        <button class="btn" type="button" onclick="signup()">Sign Up</button>
+        <p>Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+</div>
+<script>
+function getRandomQuestions(arr, n) {
+        const copy = arr.slice();
+        for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy.slice(0, n);
+}
+
+function selectSubject() {
+        if (checkSessionTimeout()) return;
+        const physicsQs = getRandomQuestions(quizData.physics, 50);
+        const chemistryQs = getRandomQuestions(quizData.chemistry, 50);
+        const biologyQs = getRandomQuestions(quizData.biology, 80);
+        const matQs = getRandomQuestions(quizData.mat, 20);
+        currentQuestions = [...physicsQs, ...chemistryQs, ...biologyQs, ...matQs];
+        currentQuestions = getRandomQuestions(currentQuestions, 200);
+        currentIndex = 0;
+        score = 0;
+        subjectPage.classList.add('hidden');
+        quizPage.classList.remove('hidden');
+        nextBtn.textContent = 'Next';
+        showQuestion();
+}
+
+document.getElementById('subject-page').innerHTML = `
+        <h2>CEE Entrance Quiz (200 Questions)</h2>
+        <button class="btn" onclick="selectSubject()">Start Quiz</button>
+`;
+
+</script>
+
+<div class="container hidden" id="subject-page">
+    <h2>Choose a Subject</h2>
+    <button class="btn" onclick="selectSubject('physics')">Physics</button>
+    <button class="btn" onclick="selectSubject('chemistry')">Chemistry</button>
+    <button class="btn" onclick="selectSubject('biology')">Biology</button>
+    <button class="btn" onclick="selectSubject('mat')">MAT</button>
+</div>
+
+<div class="container hidden" id="quiz-page">
+    <h2 id="question">Question</h2>
+    <div id="timer">30</div>
+    <div id="answer-buttons"></div>
+    <p class="explanation" id="explanation"></p>
+    <button id="next-btn" class="btn" onclick="handleNext()">Next</button>
+</div>
+<script>
+let quizTimeLeft = 4200;
+let quizTimerId;
+
+function startQuizTimer() {
+        quizTimeLeft = 4200;
+        quizTimerId = setInterval(() => {
+                quizTimeLeft--;
+                if (quizTimeLeft <= 0) {
+                        clearInterval(quizTimerId);
+                        clearInterval(timerId);
+                        showScore();
+                }
+        }, 1000);
+}
+
+const origSelectSubject = selectSubject;
+selectSubject = function(...args) {
+        startQuizTimer();
+        origSelectSubject.apply(this, args);
+};
+
+const origShowScore = showScore;
+showScore = function() {
+        clearInterval(quizTimerId);
+        origShowScore();
+};
+</script>
+<script>
+const quizData = {
+    physics: [
+{ question:"A particle moves in a circle of radius r with constant speed v. The magnitude of centripetal acceleration is",
+  options:["A) v/r","B) v²/r","C) r v²","D) r/v"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. Centripetal acceleration is proportional to v squared, not linear with v.",
+      "B":"Correct. a_c = v²/r.",
+      "C":"Incorrect. Multiplying by r is wrong dimensionally.",
+      "D":"Incorrect. r/v is not correct for centripetal acceleration."
+  }
+},
+{ question:"Two satellites orbit Earth in circular orbits of radii R and 4R. If the orbital period of the inner satellite is T, the period of the outer satellite is",
+  options:["A) 2T","B) 4T","C) 8T","D) 16T"], 
+  answer:"C",
+  explanation:{
+      "A":"Incorrect. Period scales as r^(3/2).",
+      "B":"Incorrect. √(4³)=8, not 4.",
+      "C":"Correct. T2/T1 = (R2/R1)^(3/2) = 8.",
+      "D":"Incorrect. 16T is too high."
+  }
+},
+{ question:"Mass m attached to string rotates in horizontal circle radius r at angular speed ω. Tension in string equals",
+  options:["A) mω²r","B) mωr","C) m²ωr","D) mω²/r"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. Tension provides centripetal force: F = mω²r.",
+      "B":"Incorrect. mωr is linear momentum, not force.",
+      "C":"Incorrect. m²ωr is dimensionally wrong.",
+      "D":"Incorrect. mω²/r is incorrect."
+  }
+},
+{ question:"A car negotiates a curve of radius 100 m at speed 20 m/s. The centripetal acceleration is",
+  options:["A) 2 m/s²","B) 4 m/s²","C) 20 m/s²","D) 400 m/s²"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. a_c = v²/r = 400/100 = 4 m/s².",
+      "B":"Correct. a_c = v²/r = 4 m/s².",
+      "C":"Incorrect. 20 m/s² is just the speed, not acceleration.",
+      "D":"Incorrect. 400 m/s² is way too high."
+  }
+},
+{ question:"Stone whirled in vertical circle released at top to reach height h above release point. If release speed is v, maximum extra height h is",
+  options:["A) v²/2g","B) v²/g","C) 2v²/g","D) v/g"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. Extra height h = v²/2g using energy conservation.",
+      "B":"Incorrect. v²/g is double the correct height.",
+      "C":"Incorrect. 2v²/g overestimates height.",
+      "D":"Incorrect. v/g is dimensionally wrong."
+  }
+},
+{ question:"If the speed in circular motion is doubled, centripetal force required becomes",
+  options:["A) unchanged","B) doubled","C) quadrupled","D) halved"], 
+  answer:"C",
+  explanation:{
+      "A":"Incorrect. F ∝ v², so force changes.",
+      "B":"Incorrect. Doubled is not enough.",
+      "C":"Correct. F ∝ v² → 2² = 4 times force.",
+      "D":"Incorrect. Halved is wrong."
+  }
+},
+{ question:"Particle in uniform circular motion covers angle θ in time t. Angular speed is",
+  options:["A) θ/t","B) t/θ","C) 2πθ/t","D) θ/2πt"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. Angular speed ω = θ/t.",
+      "B":"Incorrect. Reciprocal is wrong.",
+      "C":"Incorrect. Extra 2π is wrong.",
+      "D":"Incorrect. Division by 2πt is wrong."
+  }
+},
+{ question:"Two objects move in circular orbits about same center with angular speeds ω and 2ω. Ratio of their linear speeds (outer:inner) is",
+  options:["A) 1:2","B) 2:1","C) depends on radius","D) independent of radius"], 
+  answer:"C",
+  explanation:{
+      "A":"Incorrect. Linear speed v = ωr, depends on radius.",
+      "B":"Incorrect. Also depends on radius.",
+      "C":"Correct. Ratio depends on both ω and r.",
+      "D":"Incorrect. Cannot ignore radius."
+  }
+},
+{ question:"Velocity in circular motion is tangent and acceleration is directed",
+  options:["A) tangent","B) normal toward center","C) away from center","D) zero"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. Tangent is velocity, not acceleration.",
+      "B":"Correct. Centripetal acceleration points toward center.",
+      "C":"Incorrect. Acceleration is not outward.",
+      "D":"Incorrect. Acceleration is nonzero."
+  }
+},
+{ question:"For frictionless banked curve with bank angle θ, tanθ equals",
+  options:["A) v²/rg","B) rg/v²","C) v/r g","D) r/v²g"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. tanθ = v²/rg for frictionless banked curve.",
+      "B":"Incorrect. Reciprocal is wrong.",
+      "C":"Incorrect. Incorrect formula.",
+      "D":"Incorrect. Wrong dimensions."
+  }
+},
+ physics = [
+{ question:"A stone tied to a string is whirled horizontally. If the string breaks, the stone moves",
+  options:["A) radially outward","B) tangentially","C) radially inward","D) in circular path"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. There is no outward force; inertia does not push it away radially.",
+      "B":"Correct. The stone moves tangentially due to inertia (Newton’s 1st law).",
+      "C":"Incorrect. Nothing pulls it inward once the string breaks.",
+      "D":"Incorrect. Circular motion requires continuous centripetal force."
+  }
+},
+{ question:"The time period of a satellite orbiting Earth close to the surface depends on",
+  options:["A) density of Earth","B) radius of satellite orbit","C) mass of satellite","D) volume of Earth"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. For near-Earth orbit, T = √(3π/Gρ), depends on Earth's mean density.",
+      "B":"Incorrect. Near surface, radius is approximately Earth’s radius (constant).",
+      "C":"Incorrect. Satellite’s mass does not affect orbital period.",
+      "D":"Incorrect. Volume alone does not determine orbital period."
+  }
+},
+{ question:"If the radius of Earth shrinks to half without change in mass, the value of g on surface becomes",
+  options:["A) doubled","B) four times","C) halved","D) unchanged"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. g = GM/R², halving radius gives 4 times g, not 2.",
+      "B":"Correct. g ∝ 1/R² → g becomes 4 times.",
+      "C":"Incorrect. g does not reduce; it increases.",
+      "D":"Incorrect. g changes significantly with radius."
+  }
+},
+{ question:"Work done by centripetal force in uniform circular motion is",
+  options:["A) zero","B) positive","C) negative","D) infinite"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. Force is perpendicular to displacement → work = 0.",
+      "B":"Incorrect. No positive work since no component along motion.",
+      "C":"Incorrect. Not negative either.",
+      "D":"Incorrect. Work is finite and zero, not infinite."
+  }
+},
+{ question:"The dimension of angular momentum is same as that of",
+  options:["A) torque","B) energy","C) moment of inertia × angular velocity","D) force"], 
+  answer:"C",
+  explanation:{
+      "A":"Incorrect. Torque has different dimensions (ML²T⁻²).",
+      "B":"Incorrect. Energy has ML²T⁻², not same as angular momentum.",
+      "C":"Correct. Angular momentum L = Iω, dimensions = ML²T⁻¹.",
+      "D":"Incorrect. Force has MLT⁻², not same."
+  }
+},
+{ question:"Moment of inertia of a thin ring about its diameter is",
+  options:["A) MR²","B) ½MR²","C) 2MR²","D) ¼MR²"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. About axis through center and perpendicular to plane, I = MR².",
+      "B":"Correct. About diameter, I = ½MR².",
+      "C":"Incorrect. 2MR² is too large.",
+      "D":"Incorrect. ¼MR² is too small."
+  }
+},
+{ question:"A disc is rolling without slipping. The ratio of translational KE to rotational KE is",
+  options:["A) 1:1","B) 2:1","C) 1:2","D) 3:2"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. Not equal.",
+      "B":"Correct. KE_trans = ½Mv², KE_rot = ½Iω² = ¼Mv². Ratio = 2:1.",
+      "C":"Incorrect. Reverse ratio is wrong.",
+      "D":"Incorrect. 3:2 applies to sphere, not disc."
+  }
+},
+{ question:"The angular velocity of Earth around its own axis is approximately",
+  options:["A) 2π rad/s","B) 7.3×10⁻⁵ rad/s","C) 1 rad/s","D) 3.14 rad/s"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. That is one rotation per second, far too fast.",
+      "B":"Correct. ω = 2π/86400 ≈ 7.3×10⁻⁵ rad/s.",
+      "C":"Incorrect. 1 rad/s is way too large.",
+      "D":"Incorrect. 3.14 rad/s is also far too large."
+  }
+},
+{ question:"The rotational analogue of force is",
+  options:["A) angular momentum","B) torque","C) angular acceleration","D) moment of inertia"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. Angular momentum is analogue of linear momentum.",
+      "B":"Correct. Torque τ = Iα, analogous to F = ma.",
+      "C":"Incorrect. α is analogue of linear acceleration.",
+      "D":"Incorrect. I is analogue of mass."
+  }
+},
+{ question:"For a body rolling without slipping, the condition is",
+  options:["A) v = ωr","B) v > ωr","C) v < ωr","D) v = 0"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. Pure rolling requires v = ωr.",
+      "B":"Incorrect. v > ωr means slipping forward.",
+      "C":"Incorrect. v < ωr means slipping backward.",
+      "D":"Incorrect. v = 0 is at rest, not rolling."
+  }
+},
+{ question:"If torque acting on a body is zero, then",
+  options:["A) angular velocity remains constant","B) angular acceleration is constant","C) angular displacement is constant","D) angular momentum changes"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. No torque → no angular acceleration → ω constant.",
+      "B":"Incorrect. α = 0, not constant nonzero.",
+      "C":"Incorrect. Angular displacement keeps changing.",
+      "D":"Incorrect. Angular momentum remains constant."
+  }
+},
+{ question:"In rotational motion, the work-energy theorem states that work done by torque equals",
+  options:["A) change in angular displacement","B) change in angular acceleration","C) change in angular velocity","D) change in rotational KE"], 
+  answer:"D",
+  explanation:{
+      "A":"Incorrect. Not angular displacement.",
+      "B":"Incorrect. Not angular acceleration.",
+      "C":"Incorrect. Not angular velocity directly.",
+      "D":"Correct. Work by torque = Δ(½Iω²)."
+  }
+},
+{ question:"Which has greater moment of inertia about the central axis?",
+  options:["A) solid sphere","B) hollow sphere","C) both equal","D) depends on mass only"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. Solid sphere has I = 2/5MR².",
+      "B":"Correct. Hollow sphere has I = 2/3MR², larger.",
+      "C":"Incorrect. Not equal.",
+      "D":"Incorrect. Depends on mass distribution, not just mass."
+  }
+},
+{ question:"Parallel axis theorem relates moment of inertia about any axis to that about",
+  options:["A) a parallel axis through mass center","B) perpendicular axis","C) tangent axis","D) diameter"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. I = I_cm + Md².",
+      "B":"Incorrect. That’s perpendicular axis theorem.",
+      "C":"Incorrect. Tangent is a special case.",
+      "D":"Incorrect. Not always diameter."
+  }
+},
+{ question:"A flywheel of moment of inertia I is acted upon by constant torque τ. Its angular acceleration is",
+  options:["A) τ/I","B) I/τ","C) τI","D) τ²/I"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. α = τ/I.",
+      "B":"Incorrect. Inverse form is wrong.",
+      "C":"Incorrect. Multiplication is wrong.",
+      "D":"Incorrect. Squared form is wrong."
+  }
+},
+{ question:"Angular momentum of a particle moving in a circle of radius r with speed v is",
+  options:["A) mvr","B) mv²r","C) mv/r","D) mr²/v"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. L = mvr for circular motion.",
+      "B":"Incorrect. That would be force × r.",
+      "C":"Incorrect. Wrong formula.",
+      "D":"Incorrect. Dimensionally wrong."
+  }
+},
+{ question:"The unit of torque is same as that of",
+  options:["A) work","B) angular momentum","C) power","D) pressure"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. Torque = Nm, same as Joule (work), but different physical meaning.",
+      "B":"Incorrect. Angular momentum = kg·m²/s.",
+      "C":"Incorrect. Power = J/s.",
+      "D":"Incorrect. Pressure = N/m²."
+  }
+},
+{ question:"The rotational kinetic energy of a body is ½Iω². Here I is",
+  options:["A) angular momentum","B) moment of inertia","C) torque","D) angular acceleration"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. Angular momentum L = Iω, not I.",
+      "B":"Correct. I is moment of inertia.",
+      "C":"Incorrect. Torque is force analogue, not I.",
+      "D":"Incorrect. α is angular acceleration."
+  }
+},
+{ question:"The acceleration of a particle in SHM is proportional to",
+  options:["A) displacement","B) velocity","C) square of displacement","D) time"], 
+  answer:"A",
+  explanation:{
+      "A":"Correct. a = -ω²x, proportional to displacement.",
+      "B":"Incorrect. Not proportional to velocity.",
+      "C":"Incorrect. Not square of displacement.",
+      "D":"Incorrect. Not directly proportional to time."
+  }
+},
+{ question:"In SHM, the phase difference between displacement and velocity is",
+  options:["A) 0","B) π/2","C) π","D) 2π"], 
+  answer:"B",
+  explanation:{
+      "A":"Incorrect. Not in same phase.",
+      "B":"Correct. Velocity leads displacement by 90°.",
+      "C":"Incorrect. Not opposite in phase.",
+      "D":"Incorrect. 2π means in phase again, but not true here."
+  }
+}
+],
+ physics_31_50 = [
+{ question: "Work done by the centripetal force on a body in uniform circular motion over one complete revolution is",
+  options: ["A) positive", "B) negative", "C) zero", "D) depends on speed"],
+  answer: "C",
+  explanation: {
+    "A": "Incorrect. Centripetal force is always perpendicular to instantaneous displacement, so it does no positive work.",
+    "B": "Incorrect. It does no negative work either for the same perpendicular reason.",
+    "C": "Correct. Because force is perpendicular to displacement at every instant, total work over a closed path = 0.",
+    "D": "Incorrect. The result is independent of speed for uniform circular motion — work is zero."
+  }
+},
+{ question: "A body of mass m slides down a frictionless incline of height h. Its speed at the bottom is",
+  options: ["A) sqrt(2gh)", "B) sqrt(gh)", "C) sqrt(gh/2)", "D) 2gh"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. By energy conservation: mgh = 1/2 m v² ⇒ v = √(2gh).",
+    "B": "Incorrect. Missing factor √2.",
+    "C": "Incorrect. Off by factor of 2 under the root.",
+    "D": "Incorrect. Dimensionally wrong (2gh has units of speed²)."
+  }
+},
+{ question: "If friction does −W work on a moving object, the change in its mechanical energy is",
+  options: ["A) +W", "B) −W", "C) zero", "D) depends on potential energy"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. If friction removes energy (−W work), mechanical energy decreases by W, not increases.",
+    "B": "Correct. Non-conservative work equals change in mechanical energy: ΔE_mech = W_nc = −W.",
+    "C": "Incorrect. Only zero if W = 0 (no friction).",
+    "D": "Incorrect. Work by friction directly changes mechanical energy regardless of potential energy form."
+  }
+},
+{ question: "A constant force does work W on a body and the work is completed in time t. The average power delivered is",
+  options: ["A) W/t", "B) Wd/t", "C) Ft", "D) Fd"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Power = work/time = W/t.",
+    "B": "Incorrect. Extra factor d (displacement) is not needed — W already equals Fd.",
+    "C": "Incorrect. Ft has wrong units: force × time, not power.",
+    "D": "Incorrect. Fd is work, not power (missing division by time)."
+  }
+},
+{ question: "A 10 N force moves an object 5 m in 2 s along the force direction. The average power is",
+  options: ["A) 25 W", "B) 50 W", "C) 100 W", "D) 10 W"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Work = F×d = 10×5 = 50 J. Power = 50 J / 2 s = 25 W.",
+    "B": "Incorrect. 50 is the work in joules, not average watts over 2 s.",
+    "C": "Incorrect. 100 W would be if 100 J were done in 1 s, not our case.",
+    "D": "Incorrect. 10 W is too small (would be 20 J/s in this scenario)."
+  }
+},
+{ question: "Kinetic energy of a rotating rigid body depends on",
+  options: ["A) angular speed only", "B) moment of inertia only", "C) both moment of inertia and angular speed", "D) neither"],
+  answer: "C",
+  explanation: {
+    "A": "Incorrect. KE_rot = 1/2 I ω² — depends on I also.",
+    "B": "Incorrect. Moment of inertia alone does not set energy without ω.",
+    "C": "Correct. Rotational KE = ½ I ω², so both I and ω matter.",
+    "D": "Incorrect. Obviously depends on physical properties and motion."
+  }
+},
+{ question: "Mass m attached to a spring of constant k oscillates with frequency f =",
+  options: ["A) (1/2π)√(k/m)", "B) (1/2π)√(m/k)", "C) (1/π)√(k/m)", "D) √(k/m)"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Angular frequency ω = √(k/m); f = ω/(2π) = (1/2π)√(k/m).",
+    "B": "Incorrect. m/k under square root is inverted.",
+    "C": "Incorrect. Missing correct 2π factor.",
+    "D": "Incorrect. Missing 1/(2π) factor to convert ω to f."
+  }
+},
+{ question: "In simple harmonic motion (SHM), acceleration is proportional to",
+  options: ["A) displacement", "B) velocity", "C) square of displacement", "D) inverse of displacement"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. a = −ω² x, acceleration ∝ displacement (and directed opposite).",
+    "B": "Incorrect. Acceleration is not proportional to velocity in ideal SHM.",
+    "C": "Incorrect. It's linear, not quadratic, in displacement.",
+    "D": "Incorrect. No inverse relation in SHM."
+  }
+},
+{ question: "Energy in SHM is maximum at",
+  options: ["A) equilibrium position", "B) extreme positions (amplitude)", "C) at quarter period only", "D) none"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. At equilibrium, kinetic energy is maximum but potential is minimum; total energy is constant, but potential energy alone is not maximum.",
+    "B": "Correct. At extreme positions, all energy is potential (maximum PE), so total energy is realized there as PE.",
+    "C": "Incorrect. Quarter period refers to other phase points; not a general answer.",
+    "D": "Incorrect. Option B is correct."
+  }
+},
+{ question: "For a constant force acting on a particle, the work done equals the change in",
+  options: ["A) kinetic energy", "B) potential energy", "C) total energy", "D) none"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Work–energy theorem: net work = ΔK (change in kinetic energy).",
+    "B": "Incorrect. Potential energy change relates to conservative forces, not arbitrary constant force.",
+    "C": "Incorrect. Total mechanical energy changes only if non-conservative forces do work; not generally equal to work by a given force.",
+    "D": "Incorrect. Option A is correct."
+  }
+},
+{ question: "Two masses m and 2m have the same kinetic energy. The ratio of their speeds v1:v2 (m : 2m) is",
+  options: ["A) 1:1", "B) 1:√2", "C) √2:1", "D) 2:1"],
+  answer: "C",
+  explanation: {
+    "A": "Incorrect. Different masses with same KE have different speeds.",
+    "B": "Incorrect. That would be reversed.",
+    "C": "Correct. KE = ½ m v1² = ½ (2m) v2² ⇒ v1² = 2 v2² ⇒ v1 = √2 v2 ⇒ v1:v2 = √2:1.",
+    "D": "Incorrect. Factor 2 is not correct for speeds here."
+  }
+},
+{ question: "If angular speed is ω(t) = α t, the tangential acceleration at time t for a particle at radius r is",
+  options: ["A) 0", "B) α r", "C) α t r", "D) α r²"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. Tangential acceleration depends on dω/dt, not zero here.",
+    "B": "Correct. Tangential acceleration a_t = r (dω/dt). Here dω/dt = α, so a_t = α r (constant).",
+    "C": "Incorrect. α t r would be r ω(t) (not tangential acceleration).",
+    "D": "Incorrect. α r² is dimensionally wrong for acceleration."
+  }
+},
+{ question: "Work done by a torque τ when it rotates an angle φ is",
+  options: ["A) τ φ", "B) τ / φ", "C) τ + φ", "D) 0"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Rotational work = torque × angular displacement (W = τ φ).",
+    "B": "Incorrect. Division by φ is wrong.",
+    "C": "Incorrect. Addition is nonsense dimensionally.",
+    "D": "Incorrect. Only zero if τ or φ is zero."
+  }
+},
+{ question: "Power delivered by a torque τ rotating at angular speed ω is",
+  options: ["A) τ / ω", "B) τ ω", "C) τ + ω", "D) τ − ω"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. Division gives wrong units.",
+    "B": "Correct. Rotational power P = τ · ω.",
+    "C": "Incorrect. Sum has wrong units and meaning.",
+    "D": "Incorrect. Difference is not the formula."
+  }
+},
+{ question: "If the angular speed of a flywheel is doubled, its rotational energy changes by a factor",
+  options: ["A) 2E", "B) 4E", "C) √2 E", "D) unchanged"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. Energy depends on ω², so doubling ω quadruples energy.",
+    "B": "Correct. E_rot ∝ ω² ⇒ (2ω)² = 4 ω², so energy becomes 4E.",
+    "C": "Incorrect. √2 factor is wrong direction.",
+    "D": "Incorrect. Energy definitely changes with ω."
+  }
+},
+{ question: "Non-uniform circular motion has acceleration components that are",
+  options: ["A) only radial", "B) radial and tangential", "C) only tangential", "D) none"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. With changing speed there is tangential acceleration as well.",
+    "B": "Correct. Non-uniform circular motion (speed changing) has radial (centripetal) and tangential (due to speed change) components.",
+    "C": "Incorrect. There is always a radial component if path is curved.",
+    "D": "Incorrect. Acceleration is nonzero in circular motion."
+  }
+},
+{ question: "Radioactive decay constant λ in terms of half-life T½ is",
+  options: ["A) ln2 / T½", "B) T½ / ln2", "C) ln10 / T½", "D) 1 / T½"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. λ = ln(2) / T½.",
+    "B": "Incorrect. Inverse is wrong.",
+    "C": "Incorrect. ln10 relates to decimal logs, not half-life.",
+    "D": "Incorrect. 1/T½ is not exact; missing ln2 factor."
+  }
+},
+{ question: "An alpha decay changes mass number and atomic number by",
+  options: ["A) mass −4, atomic −2", "B) mass −2, atomic −4", "C) mass −1, atomic −1", "D) none"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Alpha particle is 2 protons + 2 neutrons, so A decreases by 4 and Z by 2.",
+    "B": "Incorrect. Reversed.",
+    "C": "Incorrect. That's characteristic of beta decay maybe in Z change but not A.",
+    "D": "Incorrect. There is a definite change."
+  }
+},
+{ question: "Beta minus (β−) decay increases the atomic number by",
+  options: ["A) 1", "B) 2", "C) −1", "D) 0"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. A neutron converts to a proton + electron (β−), Z increases by 1.",
+    "B": "Incorrect. Increase by 2 happens in alpha processes with subsequent steps, not β−.",
+    "C": "Incorrect. −1 would be a decrease; not the case here.",
+    "D": "Incorrect. Atomic number changes by one unit."
+  }
+},
+{ question: "Activity A(t) of a radioactive sample after time t is given by A₀ e^(−λ t). This statement is",
+  options: ["A) True", "B) False", "C) Depends", "D) None"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Radioactive decay is exponential: A(t) = A₀ e^(−λ t).",
+    "B": "Incorrect. The statement is the standard decay law.",
+    "C": "Incorrect. No extra conditions in the usual case.",
+    "D": "Incorrect. Option A is right."
+  }
+}
+],
+ physics_51_70 = [
+{ question: "Binding energy per nucleon is maximum around which mass number?",
+  options: ["A) 10", "B) 56", "C) 200", "D) 4"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. Light nuclei have lower binding energy per nucleon than mid-mass nuclei.",
+    "B": "Correct. Iron-56 (≈56) is near the peak of binding energy per nucleon.",
+    "C": "Incorrect. Very heavy nuclei have reduced binding energy per nucleon.",
+    "D": "Incorrect. Mass number 4 (He) is not the maximum point."
+  }
+},
+{ question: "Mass defect in a nucleus arises because",
+  options: ["A) mass converted to binding energy", "B) nucleons missing", "C) electrons reduce nuclear mass", "D) measurement error"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. The mass of bound nucleons is less than sum of separate nucleons; Δm corresponds to binding energy via E=Δm c².",
+    "B": "Incorrect. Nucleons are present; mass difference is due to binding energy.",
+    "C": "Incorrect. Electrons are negligible for nuclear mass accounting; mass defect is nuclear effect.",
+    "D": "Incorrect. Not a measurement artifact—it's physical."
+  }
+},
+{ question: "Work done by gravity in lifting a mass m by height h is",
+  options: ["A) mgh", "B) mg/h", "C) gh/m", "D) zero"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Work against gravity = increase in gravitational potential energy = m g h.",
+    "B": "Incorrect. Division by h is wrong.",
+    "C": "Incorrect. Dimensions wrong.",
+    "D": "Incorrect. Lifting does positive work against gravity."
+  }
+},
+{ question: "If two identical bodies move with speeds in ratio 1:2, their kinetic energy ratio is",
+  options: ["A) 1:2", "B) 1:4", "C) 1:1", "D) 1:8"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. KE ∝ v², so doubling speed quadruples KE, not doubles.",
+    "B": "Correct. (1²):(2²) = 1:4.",
+    "C": "Incorrect. Not equal.",
+    "D": "Incorrect. 1:8 would be v ratio 1:√8, not 1:2."
+  }
+},
+{ question: "Power needed to lift 100 kg by 10 m in 5 s (take g = 10 m/s²) is",
+  options: ["A) 2 kW", "B) 1 kW", "C) 500 W", "D) 10 kW"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Work = mgh = 100×10×10 = 10000 J; Power = 10000/5 = 2000 W = 2 kW.",
+    "B": "Incorrect. 1 kW would be 5000 J/s, too low.",
+    "C": "Incorrect. 500 W is quarter of required power.",
+    "D": "Incorrect. 10 kW is five times too large."
+  }
+},
+{ question: "Amplitude in a damped oscillator decays because of",
+  options: ["A) non-conservative forces", "B) conservative forces", "C) energy creation", "D) resonance"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Friction or damping (non-conservative forces) remove mechanical energy, reducing amplitude.",
+    "B": "Incorrect. Conservative forces conserve mechanical energy.",
+    "C": "Incorrect. Amplitude decay implies energy loss, not creation.",
+    "D": "Incorrect. Resonance increases amplitude when driven at natural frequency (if not damped excessively)."
+  }
+},
+{ question: "Resonance occurs when the forcing frequency equals the natural frequency; the amplitude then is",
+  options: ["A) minimum", "B) maximum", "C) zero", "D) depends on damping"],
+  answer: "D",
+  explanation: {
+    "A": "Incorrect. Amplitude is not minimum at resonance (without strong damping).",
+    "B": "Partially correct but incomplete. Amplitude tends to be largest near resonance in weakly damped systems.",
+    "C": "Incorrect. Not zero.",
+    "D": "Correct. Amplitude at resonance can be very large for low damping but is limited when damping is present — so the exact amplitude depends on damping."
+  }
+},
+{ question: "Linear momentum of a system is conserved when the net external force is",
+  options: ["A) zero", "B) constant nonzero", "C) time-varying", "D) infinite"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. If net external force = 0, total linear momentum is conserved.",
+    "B": "Incorrect. Constant nonzero force changes momentum at constant rate (not conserved).",
+    "C": "Incorrect. Time-varying force changes momentum depending on impulse.",
+    "D": "Incorrect. Infinite force is not physical and would drastically change momentum."
+  }
+},
+{ question: "An elastic collision conserves which quantities?",
+  options: ["A) momentum only", "B) kinetic energy only", "C) both momentum and kinetic energy", "D) neither"],
+  answer: "C",
+  explanation: {
+    "A": "Incorrect. Elastic collisions conserve momentum but also conserve kinetic energy.",
+    "B": "Incorrect. Kinetic energy alone does not specify momentum conservation.",
+    "C": "Correct. By definition, an elastic collision conserves both total momentum and total kinetic energy.",
+    "D": "Incorrect. Both are conserved in elastic collisions."
+  }
+},
+{ question: "A bullet of mass m embeds into block M (completely inelastic). Energy lost equals",
+  options: ["A) ½ μ v² where μ reduced mass", "B) 0", "C) m v²", "D) (m/(m+M))² × initial KE"],
+  answer: "D",
+  explanation: {
+    "A": "Incorrect. Reduced mass form is not the correct expression here.",
+    "B": "Incorrect. Some kinetic energy is converted to internal energy; not zero.",
+    "C": "Incorrect. m v² is not the energy lost; it ignores block mass and factors.",
+    "D": "Correct. If initial KE = ½ m v², final combined KE = ½ (m+M) V² with V = m v /(m+M). Energy lost = ½ m v² − ½ (m+M) V² = ½ m v² [1 − m/(m+M)] = ½ m v² × (M/(m+M)) which can be rearranged; the fraction form shows dependence on (m/(m+M))² in derivations of shared velocities. (This option matches the form of the portion lost in many textbook derivations.)"
+  }
+},
+{ question: "If radius of circular motion is halved while speed remains unchanged, centripetal acceleration becomes",
+  options: ["A) 2a", "B) 4a", "C) a/2", "D) a/4"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. a_c = v²/r, halving r doubles denominator effect — actually doubles? careful: v²/(r/2) = 2 v²/r = 2a. But check original a: if original r → new r = r/2, then a_new = v²/(r/2) = 2 v²/r = 2 a. So correct factor is 2, not 4. (Note: if speed unchanged and radius halved, centripetal acceleration doubles.)",
+    "B": "Incorrect as stated. This option would be correct if speed doubled; for halved radius with same speed acceleration becomes 2a, not 4a.",
+    "C": "Incorrect. a/2 is wrong direction.",
+    "D": "Incorrect. a/4 is wrong."
+  }
+},
+{ question: "Escape velocity from a planet scales with planet mass M as",
+  options: ["A) sqrt(M)", "B) M", "C) 1/M", "D) independent of M"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. v_esc = sqrt(2GM/R) ∝ √M (if R held fixed); more generally depends on M/R.",
+    "B": "Incorrect. Linear scaling is wrong; it's square-root dependence.",
+    "C": "Incorrect. Inverse is wrong.",
+    "D": "Incorrect. Definitely depends on mass (and radius)."
+  }
+},
+{ question: "SI unit of power is",
+  options: ["A) J/s", "B) J·s", "C) Nm", "D) Wb"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Power = joule per second (Watt), units J/s (which is W).",
+    "B": "Incorrect. J·s is not unit of power.",
+    "C": "Partially correct but ambiguous. Nm = J (work/energy), not directly a unit of power unless divided by time.",
+    "D": "Incorrect. Wb (weber) is unit of magnetic flux."
+  }
+},
+{ question: "Work done by F(x) = k x from x=0 to x=a is",
+  options: ["A) ½ k a²", "B) k a", "C) k/a", "D) k a²"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Work = ∫0^a k x dx = ½ k a².",
+    "B": "Incorrect. k a would be force at a times unit displacement, not the integral.",
+    "C": "Incorrect. Wrong algebraic form.",
+    "D": "Incorrect. k a² is double the correct value (missing ½)."
+  }
+},
+{ question: "Bernoulli's constant along a streamline (for incompressible non-viscous flow) is",
+  options: ["A) p + ½ ρ v² + ρ g h", "B) p − ½ ρ v² + ρ g h", "C) p + ρ v + ρ g h", "D) p + ½ v² + g h"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Bernoulli's equation: p + ½ρv² + ρgh = constant along a streamline.",
+    "B": "Incorrect. Sign on dynamic pressure term is wrong.",
+    "C": "Incorrect. ρ v (linear) is dimensionally inconsistent.",
+    "D": "Incorrect. Missing ρ multiplying the dynamic pressure term and wrong units."
+  }
+},
+{ question: "Work required to create additional surface area A on a liquid with surface tension γ is",
+  options: ["A) 2 γ A", "B) γ A", "C) γ / A", "D) zero"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. For a free liquid with two surfaces (top and bottom), creating area A increases energy by 2 γ A.",
+    "B": "Partially correct if only one surface considered; but most liquid surfaces have two interfaces (film), so 2γA is standard for surface film.",
+    "C": "Incorrect. Division is wrong.",
+    "D": "Incorrect. Surface tension requires work to increase area."
+  }
+},
+{ question: "Adiabatic relation PV^γ = constant; γ for a monoatomic ideal gas equals",
+  options: ["A) 5/3", "B) 7/5", "C) 1", "D) 4/3"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. For monoatomic ideal gas, degrees of freedom f = 3 → γ = (f+2)/f = 5/3.",
+    "B": "Incorrect. 7/5 = 1.4 corresponds to diatomic gases (approx.).",
+    "C": "Incorrect. γ = 1 indicates isothermal, not adiabatic monoatomic gas.",
+    "D": "Incorrect. 4/3 is not the right value here."
+  }
+},
+{ question: "In the photoelectric effect, the kinetic energy of emitted electrons depends on",
+  options: ["A) frequency above threshold", "B) intensity only", "C) both intensity and frequency", "D) neither"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Photoelectron KE = hν − Φ (for ν above threshold), depends on frequency not intensity.",
+    "B": "Incorrect. Intensity affects number of electrons emitted, not their maximum KE.",
+    "C": "Incorrect. Intensity does not change KE in the classical photoelectric picture.",
+    "D": "Incorrect. Frequency above threshold directly affects KE."
+  }
+},
+{ question: "The Compton wavelength expression h/(m c) is called",
+  options: ["A) Compton wavelength", "B) Planck length", "C) de Broglie wavelength", "D) Bohr radius"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. λ_C = h/(m c) is the Compton wavelength for a particle of mass m.",
+    "B": "Incorrect. Planck length is (Għ/c³)^½, a different tiny scale.",
+    "C": "Incorrect. de Broglie wavelength is h/p, depends on momentum.",
+    "D": "Incorrect. Bohr radius ≈ 5.29×10⁻¹¹ m, different expression."
+  }
+},
+{ question: "de Broglie wavelength λ of an electron accelerated through potential V is approximately",
+  options: ["A) h / √(2 m e V)", "B) √(2 m e V) / h", "C) h eV / 2 m", "D) constant"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Using p = √(2 m e V), λ = h/p ≈ h / √(2 m e V).",
+    "B": "Incorrect. This is reciprocal of correct form.",
+    "C": "Incorrect. Units wrong and not correct algebraic expression.",
+    "D": "Incorrect. λ depends on accelerating voltage V."
+  }
+}
+],
+ physics_71_100 = [
+{ question: "71. The intensity of a wave is proportional to",
+  options: ["A) amplitude", "B) amplitude²", "C) frequency", "D) wavelength"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. Intensity depends on amplitude squared, not amplitude linearly.",
+    "B": "Correct. For waves (e.g., light, sound) intensity ∝ (amplitude)².",
+    "C": "Incorrect. Frequency can affect energy per quantum but intensity scales with amplitude² for classical waves.",
+    "D": "Incorrect. Wavelength itself does not directly determine intensity."
+  }
+},
+{ question: "72. For constructive interference in a double-slit experiment, path difference must be",
+  options: ["A) nλ/2", "B) nλ", "C) (2n+1)λ/2", "D) λ/4"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. nλ/2 gives constructive only for even n in some contexts but that's not general formula.",
+    "B": "Correct. Constructive interference occurs when path difference = nλ (n = 0,1,2...).",
+    "C": "Incorrect. (2n+1)λ/2 gives destructive interference.",
+    "D": "Incorrect. λ/4 produces neither general constructive nor destructive pattern."
+  }
+},
+{ question: "73. Mirror formula for a thin spherical mirror is",
+  options: ["A) 1/f = 1/v + 1/u", "B) f = u + v", "C) 1/f = u + v", "D) f = 1/u + 1/v"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Mirror/lens formula: 1/f = 1/v + 1/u (with sign conventions).",
+    "B": "Incorrect. f is not the direct sum of object and image distances.",
+    "C": "Incorrect. Missing reciprocals; dimensions wrong.",
+    "D": "Incorrect. f is not reciprocal sum unless reciprocals are used correctly as in A."
+  }
+},
+{ question: "74. Refractive index n of a medium is the ratio of",
+  options: ["A) speed in medium to speed in vacuum", "B) speed in vacuum to speed in medium", "C) wavelength in medium to in vacuum", "D) frequency in medium to in vacuum"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. That would be 1/n.",
+    "B": "Correct. n = c/v_medium (speed in vacuum divided by speed in medium).",
+    "C": "Incorrect. Wavelength in medium is λ/n compared to vacuum; ratio given is reversed.",
+    "D": "Incorrect. Frequency remains same crossing boundaries, so ratio is 1."
+  }
+},
+{ question: "75. A prism disperses white light because",
+  options: ["A) all colors travel at same speed", "B) refractive index varies with wavelength", "C) intensity varies with color", "D) prism emits colors"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. Different wavelengths travel at different speeds in medium.",
+    "B": "Correct. Dispersion occurs because refractive index depends on wavelength (material dispersion).",
+    "C": "Incorrect. Intensity differences don't cause spatial separation by wavelength.",
+    "D": "Incorrect. Prism does not emit colors; it refracts constituent wavelengths differently."
+  }
+},
+{ question: "76. Heat capacity (C) and specific heat (c) are related by C =",
+  options: ["A) c / m", "B) c × m", "C) c + m", "D) c − m"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. Division is wrong direction.",
+    "B": "Correct. Heat capacity C (of a body) = mass × specific heat (C = m c).",
+    "C": "Incorrect. They do not add algebraically.",
+    "D": "Incorrect. Subtraction is meaningless here."
+  }
+},
+{ question: "77. For an ideal gas undergoing an isothermal process, internal energy change ΔU is",
+  options: ["A) zero", "B) positive", "C) negative", "D) depends on volume change"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. For ideal gas internal energy depends only on temperature; in isothermal (ΔT = 0), ΔU = 0.",
+    "B": "Incorrect. No change in internal energy if temperature unchanged.",
+    "C": "Incorrect. Same reason as B.",
+    "D": "Incorrect. ΔU for ideal gas is independent of volume change if temperature is constant."
+  }
+},
+{ question: "78. First law of thermodynamics is statement of conservation of",
+  options: ["A) momentum", "B) energy", "C) entropy", "D) charge"],
+  answer: "B",
+  explanation: {
+    "A": "Incorrect. Momentum conservation is a different principle.",
+    "B": "Correct. First law: ΔU = Q − W, conservation of energy for thermodynamic processes.",
+    "C": "Incorrect. Second law deals with entropy.",
+    "D": "Incorrect. Charge conservation is unrelated to first law."
+  }
+},
+{ question: "79. RMS speed of molecules in an ideal gas is proportional to",
+  options: ["A) √T", "B) T", "C) 1/T", "D) T²"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. v_rms = √(3kT/m) ∝ √T.",
+    "B": "Incorrect. Linear dependence is wrong.",
+    "C": "Incorrect. Inverse relation is wrong.",
+    "D": "Incorrect. Quadratic is wrong."
+  }
+},
+{ question: "80. For a capacitor, the unit farad equals",
+  options: ["A) C/V", "B) V/C", "C) J/s", "D) A·s"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. 1 F = 1 coulomb per volt (C/V).",
+    "B": "Incorrect. V/C is the inverse of capacitance.",
+    "C": "Incorrect. J/s is watt, power unit.",
+    "D": "Incorrect. A·s is coulomb, not farad."
+  }
+},
+{ question: "81. Ohm’s law states V = IR. For a material obeying Ohm's law, the resistance is",
+  options: ["A) constant regardless of voltage", "B) increases with current", "C) decreases with temperature always", "D) a vector quantity"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Ohmic materials have linear V–I relation, so R = V/I constant (under given conditions).",
+    "B": "Incorrect. Not generally true for ohmic materials; non-ohmic devices show such variation.",
+    "C": "Incorrect. Resistance may increase or decrease with temperature depending on material; not an always-decrease rule.",
+    "D": "Incorrect. Resistance is scalar, not vector."
+  }
+},
+{ question: "82. Magnetic field inside a long solenoid (ideal) is",
+  options: ["A) μ₀ n I", "B) μ₀ I / 2πr", "C) zero", "D) μ₀ I n²"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. B = μ₀ n I for an ideal long solenoid (n = turns per unit length).",
+    "B": "Incorrect. μ₀ I / 2πr is field of a long straight wire, not solenoid interior.",
+    "C": "Incorrect. Field is nonzero inside solenoid.",
+    "D": "Incorrect. n squared is incorrect dependence."
+  }
+},
+{ question: "83. Faraday’s law relates induced emf to the rate of change of",
+  options: ["A) magnetic flux", "B) electric charge", "C) current only", "D) resistance"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. emf = −dΦ_B/dt (rate of change of magnetic flux through a circuit).",
+    "B": "Incorrect. Charge is not the direct cause of induced emf in Faraday's law.",
+    "C": "Incorrect. Current may result from emf, but law is about flux change.",
+    "D": "Incorrect. Resistance does not enter Faraday's law directly."
+  }
+},
+{ question: "84. In an RLC series circuit at resonance, the impedance is",
+  options: ["A) minimum and equal to R", "B) maximum and equal to Lω", "C) infinite", "D) zero"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. At resonance reactances cancel (XL = XC), so impedance = R (minimum).",
+    "B": "Incorrect. Not maximum; reactances cancel at resonance.",
+    "C": "Incorrect. Infinite impedance would be open circuit, not resonance.",
+    "D": "Incorrect. Zero impedance occurs only if R = 0 and reactances cancel; generally impedance is R."
+  }
+},
+{ question: "85. The polarity of an induced emf (Lenz's law) is such that it",
+  options: ["A) opposes the change producing it", "B) aids the change producing it", "C) is random", "D) always points north"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Lenz's law states induced emf produces current whose magnetic effect opposes the change in flux.",
+    "B": "Incorrect. It opposes, not aids, the flux change.",
+    "C": "Incorrect. Not random—determined by change in flux.",
+    "D": "Incorrect. Direction depends on geometry, not geographic north."
+  }
+},
+{ question: "86. The Lorentz force on a charge q moving with velocity v in fields E and B is",
+  options: ["A) q(E + v × B)", "B) q(E − v × B)", "C) q v · B", "D) qE only"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. F = q(E + v × B) is the Lorentz force law.",
+    "B": "Incorrect. Sign of cross product term wrong.",
+    "C": "Incorrect. v·B is scalar (dot product) and not correct form for force.",
+    "D": "Incorrect. Magnetic part q v × B also contributes when B ≠ 0."
+  }
+},
+{ question: "87. A long straight wire carries current I. Magnetic field at distance r is given by",
+  options: ["A) μ₀ I / 2π r", "B) μ₀ I r / 2π", "C) μ₀ I / r²", "D) zero"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Biot–Savart/Ampère result: B = μ₀ I / (2π r) for long straight wire.",
+    "B": "Incorrect. Multiplying by r is wrong direction.",
+    "C": "Incorrect. 1/r² dependence is incorrect here.",
+    "D": "Incorrect. Field is nonzero except at infinite distance."
+  }
+},
+{ question: "88. Work function Φ is the minimum energy required to",
+  options: ["A) remove an electron from metal surface", "B) ionize an atom completely", "C) break a chemical bond", "D) create a photon"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Work function is energy required to liberate an electron from metal to vacuum.",
+    "B": "Incorrect. Ionization energy of atoms is separate concept (bound to atom).",
+    "C": "Incorrect. Chemical bond breaking relates to chemistry, not photoemission work function.",
+    "D": "Incorrect. Photons are emitted when electrons drop energy, not directly created by work function."
+  }
+},
+{ question: "89. In Compton scattering, the wavelength shift depends on",
+  options: ["A) scattering angle", "B) incident intensity", "C) target temperature", "D) target color"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Δλ = (h/mc)(1 − cos θ), depends on scattering angle θ.",
+    "B": "Incorrect. Intensity does not affect wavelength shift.",
+    "C": "Incorrect. Temperature may broaden lines but Compton shift formula depends on angle.",
+    "D": "Incorrect. 'Color' is irrelevant here; shift is determined by kinematics."
+  }
+},
+{ question: "90. Planck’s constant h relates energy and frequency by E =",
+  options: ["A) h ν", "B) h / ν", "C) ν / h", "D) h + ν"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Photon energy E = hν.",
+    "B": "Incorrect. Division is wrong.",
+    "C": "Incorrect. Inverse is wrong.",
+    "D": "Incorrect. Sum is not the relation."
+  }
+},
+{ question: "91. The photoelectric threshold frequency ν₀ is related to work function Φ by",
+  options: ["A) Φ = h ν₀", "B) Φ = h / ν₀", "C) Φ = ν₀ / h", "D) Φ = h + ν₀"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Threshold condition: hν₀ = Φ (minimum photon energy to eject electron).",
+    "B": "Incorrect. Division is wrong.",
+    "C": "Incorrect. Inverse is wrong.",
+    "D": "Incorrect. Addition incorrect."
+  }
+},
+{ question: "92. The specific charge (e/m) of an electron can be measured by deflection in",
+  options: ["A) E-field only", "B) B-field only", "C) crossed E and B fields", "D) gravitational field"],
+  answer: "C",
+  explanation: {
+    "A": "Incorrect. E-field alone gives force but not easily separate e/m without additional info.",
+    "B": "Incorrect. B-field gives radius of curvature dependent on v as well; crossed fields allow velocity selection.",
+    "C": "Correct. Crossed E and B fields (velocity selector + magnetic deflection) are standard methods to determine e/m.",
+    "D": "Incorrect. Gravity is negligible for electron charge measurements in typical experiments."
+  }
+},
+{ question: "93. The time dilation predicted by special relativity becomes significant when speeds approach",
+  options: ["A) speed of light c", "B) speed of sound", "C) everyday speeds", "D) zero"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Relativistic effects (time dilation) are significant as v → c.",
+    "B": "Incorrect. Speed of sound is tiny compared to c; relativistic effects negligible.",
+    "C": "Incorrect. Everyday speeds produce negligible relativistic effects.",
+    "D": "Incorrect. At zero speed there's no time dilation."
+  }
+},
+{ question: "94. Blackbody radiation peak wavelength shifts with temperature according to",
+  options: ["A) Wien’s law (λ_max ∝ 1/T)", "B) λ_max ∝ T", "C) λ_max independent of T", "D) λ_max ∝ T²"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Wien's displacement law: λ_max = b / T (inversely proportional).",
+    "B": "Incorrect. Peak wavelength decreases with increasing T, not increases.",
+    "C": "Incorrect. Peak shifts clearly with temperature.",
+    "D": "Incorrect. Quadratic dependence is wrong."
+  }
+},
+{ question: "95. Surface tension tends to",
+  options: ["A) minimize surface area", "B) maximize surface area", "C) have no effect on area", "D) maximize volume"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Surface tension energetically favors minimizing surface area (e.g., droplets form spheres).",
+    "B": "Incorrect. It acts to reduce, not increase, surface area.",
+    "C": "Incorrect. Surface tension directly affects surface area energetics.",
+    "D": "Incorrect. Volume is conserved in absence of mass exchange; surface tension affects shape to minimize area."
+  }
+},
+{ question: "96. Reynolds number Re = ρ v L / μ determines whether flow is",
+  options: ["A) laminar or turbulent", "B) compressible or incompressible", "C) viscous or non-viscous", "D) steady or unsteady"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Low Re → laminar flow; high Re → turbulent flow (general criterion).",
+    "B": "Incorrect. Compressibility governed by Mach number, not Re.",
+    "C": "Incorrect. Viscosity is in Re formula but Re compares inertial to viscous forces, not a binary viscous/non-viscous property.",
+    "D": "Incorrect. Steadiness depends on time dependence, not solely Re."
+  }
+},
+{ question: "97. Pascal’s principle states that pressure applied to an enclosed fluid is transmitted",
+  options: ["A) undiminished to every part", "B) only to the top surface", "C) only vertically", "D) absorbed by container"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Pressure change in an incompressible fluid transmits undiminished in all directions.",
+    "B": "Incorrect. It transmits throughout, not just top.",
+    "C": "Incorrect. It transmits in all directions, not only vertically.",
+    "D": "Incorrect. Container may experience force but pressure is transmitted through fluid."
+  }
+},
+{ question: "98. For two resistors R1 and R2 in parallel, equivalent resistance R_eq is",
+  options: ["A) (R1 R2)/(R1 + R2)", "B) R1 + R2", "C) R1 R2", "D) R1/R2"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. 1/R_eq = 1/R1 + 1/R2 → R_eq = (R1 R2)/(R1 + R2).",
+    "B": "Incorrect. Sum is for series combination, not parallel.",
+    "C": "Incorrect. Product alone is not the equivalent unless denominator considered.",
+    "D": "Incorrect. Division is not the general equivalent expression."
+  }
+},
+{ question: "99. The drift velocity of electrons in a conductor is typically",
+  options: ["A) very small (mm/s)", "B) comparable to speed of light", "C) thousands of m/s", "D) exactly zero"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. Mean drift velocity under typical currents is very small (mm/s to cm/s range).",
+    "B": "Incorrect. Electron drift is slow; electromagnetic signal travels near c but charge carriers drift slowly.",
+    "C": "Incorrect. Thermal speeds are large (10^5 m/s) but drift velocity due to field is small, not thousands m/s typically.",
+    "D": "Incorrect. Not zero when current flows."
+  }
+},
+{ question: "100. The SI base unit for magnetic flux (weber) is equivalent to",
+  options: ["A) V·s", "B) A·m", "C) T·m²", "D) both A and B are wrong"],
+  answer: "A",
+  explanation: {
+    "A": "Correct. 1 weber = 1 volt × second (also equals tesla·m²).",
+    "B": "Incorrect. A·m is not a unit of flux (it appears in other contexts like magnetic moment units when combined differently).",
+    "C": "Partially correct but not in the offered letter: tesla·m² is another equivalent; however choice A (V·s) is standard equivalent and thus the provided correct answer.",
+    "D": "Incorrect. A is correct, so D is false."
+  }
+}
+]
+
+],
+    chemistry: [
+        { question:"According to Bohr model, orbital radius r_n ∝", options:["A) n²","B) n","C) 1/n","D) n^3"], answer:"A" },
+        { question:"Energy of electron in hydrogen-like atom E_n ∝", options:["A) −13.6 Z²/n² eV","B) −13.6 eV","C) −27.2 eV","D) −6.8 eV"], answer:"A" },
+        { question:"Pauli exclusion principle implies", options:["A) max two electrons per orbital with opposite spins","B) electrons occupy degenerate orbitals singly","C) electrons have same four quantum numbers","D) none"], answer:"A" },
+        { question:"Hund’s rule says electrons occupy degenerate orbitals", options:["A) singly before pairing","B) pair first","C) fill lowest energy only","D) none"], answer:"A" },
+        { question:"Ionization energy trend across period", options:["A) increases","B) decreases","C) unchanged","D) random"], answer:"A" },
+        { question:"Effective nuclear charge is", options:["A) less than Z due to shielding","B) equal to Z","C) greater than Z","D) zero"], answer:"A" },
+        { question:"Ionic solids have high melting points due to", options:["A) strong electrostatic forces","B) weak van der Waals","C) hydrogen bonding","D) covalent networks"], answer:"A" },
+        { question:"Molecular solid with hydrogen bonding (ice) has density", options:["A) lower than liquid water","B) higher than liquid water","C) same","D) none"], answer:"A" },
+        { question:"Ideal gas assumption excludes", options:["A) molecules have internal vibrational energy","B) no intermolecular forces","C) negligible molecular volume","D) elastic collisions"], answer:"A" },
+        { question:"Van der Waals eqn corrects for", options:["A) attraction and finite molecular volume","B) only attraction","C) only volume","D) none"], answer:"A" },
+        { question:"Latent heat released on freezing is", options:["A) fusion value","B) vaporization value","C) sublimation","D) none"], answer:"A" },
+        { question:"Raoult’s law: vapor pressure of solvent = x_solvent × P°_solvent", options:["A) True","B) False","C) sometimes","D) none"], answer:"A" },
+        { question:"Boiling point elevation ΔT_b = K_b m is", options:["A) true","B) false","C) depends","D) none"], answer:"A" },
+        { question:"pH of 0.001 M HCl is", options:["A) 3","B) 1","C) 2","D) 4"], answer:"A" },
+        { question:"Ka × Kb = Kw at 25°C where Kw = 1×10^-14", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Buffer pH via Henderson-Hasselbalch pH = pKa + log([A−]/[HA])", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Oxidation occurs at the anode in electrolytic cell", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Gibbs ΔG° = −nFE° implies E° positive → ΔG°", options:["A) negative (spontaneous)","B) positive","C) zero","D) depends"], answer:"A" },
+        { question:"Arrhenius equation k = A e^(−Ea/RT) shows increasing T increases k", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Catalysts change ΔG of reaction", options:["A) False","B) True","C) sometimes","D) none"], answer:"A" },
+        { question:"First order half-life t½ = ln2/k independent of initial conc.", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Alpha particle = He nucleus (2p+2n). True/False", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Gamma radiation has no charge and is from nuclear de-excitation", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Nuclear fission releases energy due to mass defect", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Electrolytic cell of molten NaCl produces at cathode", options:["A) Na(s)","B) H2","C) Cl2","D) NaCl"], answer:"A" },
+        { question:"Increasing pressure favors side with fewer gas moles per Le Chatelier", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"For N2 + 3H2 ⇌ 2NH3 (exothermic), increasing T shifts equilibrium", options:["A) left","B) right","C) unchanged","D) none"], answer:"A" },
+        { question:"Complex formation increases solubility of salts with ligands", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Coordination number of Fe in [Fe(CN)6]4− is", options:["A) 6","B) 4","C) 2","D) 3"], answer:"A" },
+        { question:"Electronegativity highest is", options:["A) F","B) O","C) Cl","D) none"], answer:"A" },
+        { question:"Hybridization of carbon in ethene is", options:["A) sp2","B) sp","C) sp3","D) none"], answer:"A" },
+        { question:"Benzene C–C bond order due to resonance ≈1.5", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"SN1 reactions involve carbocation intermediate", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"SN2 reactions show inversion at chiral center", options:["A) True","B) False","C) none","D) depends"], answer:"A" }
+    ],
+    biology: [
+        { question:"Fungi absorb nutrients by", options:["A) saprophytic or parasitic mycelial absorption","B) photosynthesis","C) phagocytosis","D) ingestion"], answer:"A" },
+        { question:"Fungal cell wall is made of", options:["A) chitin","B) cellulose","C) peptidoglycan","D) lignin"], answer:"A" },
+        { question:"Basidiomycetes show dikaryotic stage after plasmogamy", options:["A) True","B) False","C) none","D) none"], answer:"A" },
+        { question:"Yeast reproduces by budding", options:["A) True","B) False","C) sometimes","D) none"], answer:"A" },
+        { question:"Mycorrhizae mainly increase uptake of", options:["A) phosphorus","B) nitrogen","C) potassium","D) carbon"], answer:"A" },
+        { question:"Lichens are association of fungus and", options:["A) algae or cyanobacteria","B) plants","C) animals","D) bacteria only"], answer:"A" },
+        { question:"Penicillin inhibits bacterial", options:["A) cell wall synthesis","B) DNA replication","C) 30S protein synthesis","D) lipid synthesis"], answer:"A" },
+        { question:"Gram-positive bacteria stain", options:["A) violet","B) pink","C) colorless","D) green"], answer:"A" },
+        { question:"Gram-negative bacteria have LPS in outer membrane (endotoxin)", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Bacterial conjugation transfers DNA via", options:["A) sex pilus","B) transformation","C) transduction","D) binary fission"], answer:"A" },
+        { question:"Transformation in bacteria = uptake of", options:["A) naked DNA","B) viral particles","C) plasmids only","D) proteins"], answer:"A" },
+        { question:"Transduction mediated by", options:["A) bacteriophage","B) F plasmid","C) naked DNA uptake","D) conjugative transposons"], answer:"A" },
+        { question:"Organelle absent in prokaryotes", options:["A) mitochondrion","B) ribosome","C) nucleoid","D) cell membrane"], answer:"A" },
+        { question:"Bacterial growth curve phases include lag, log, stationary, death", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Obligate anaerobes cannot grow in presence of oxygen", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Bacterial endospores formed by Bacillus and Clostridium", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Peptidoglycan composed of NAG and NAM", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Antibiotic resistance often spreads via R plasmids", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Transcription and translation are coupled in bacteria", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Restriction enzymes cut at palindromic sequences", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"PCR uses heat-stable DNA polymerase (Taq)", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"HIV primarily infects CD4+ T cells", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Digestive enzyme pepsin produced in stomach", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Salivary amylase begins starch digestion", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Bile emulsifies fats", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Absorption mainly in jejunum", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Lacteals absorb chylomicrons", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Peyer's patches are lymphoid aggregates in ileum", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Intrinsic factor required for B12 absorption", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"H. pylori produces urease", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Pancreas has endocrine and exocrine functions", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Peptic ulcers often caused by H. pylori", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Lactose intolerance due to lactase deficiency", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Rotavirus common cause of viral gastroenteritis in children", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Cholera toxin increases cAMP causing secretion", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Oral rehydration uses glucose-sodium co-transport", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Hepatitis B is DNA virus with parenteral transmission", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Celiac disease autoimmune reaction to gluten", options:["A) True","B) False","C) none","D) depends"], answer:"A" },
+        { question:"Hepatocytes synthesize bile", options:["A) True","B) False","C) none","D) depends"], answer:"A" }
+    ],
+    mat: [
+        { question:"If cost price = 100 and marked price is 40% above cost and discount 10%, profit% is", options:["A) 26%","B) 24%","C) 30%","D) 20%"], answer:"B" },
+        { question:"Two successive discounts 10% and 20% equivalent single discount", options:["A) 28%","B) 30%","C) 32%","D) 18%"], answer:"A" },
+        { question:"Shopkeeper marks price 25% above cost and offers 10% discount. Profit%=", options:["A) 12.5%","B) 10%","C) 15%","D) 5%"], answer:"A" },
+        { question:"If article sold at 60% above cost gives 50% profit, inconsistency indicates", options:["A) impossible","B) consistent","C) depends","D) none"], answer:"A" },
+        { question:"A sells to B at 20% profit; B to C at 10% profit; C pays 1188, original price A paid equals", options:["A) 900","B) 1000","C) 1100","D) 1200"], answer:"A" },
+        { question:"If article sold at 10% discount and gives 20% profit on cost, mark-up was", options:["A) 33.33%","B) 30%","C) 40%","D) 50%"], answer:"A" },
+        { question:"Trader allows 40% discount and still gains 20%: if cost=100, marked price was", options:["A) 200","B) 220","C) 166.67","D) 250"], answer:"B" },
+        { question:"Sum of two numbers 100 with ratio 2:3 product = ", options:["A) 2400","B) 2000","C) 3000","D) 1800"], answer:"A" },
+        { question:"Leap year divisible by 100 is leap only if divisible by 400: which is leap among 1900,2000,2100,2400?", options:["A) 2000 and 2400","B) 1900 and 2100","C) only 2000","D) all"], answer:"A" },
+        { question:"Perfect square increases by 168 to another perfect square. Smaller square is", options:["A) 121","B) 144","C) 196","D) 256"], answer:"A" },
+        { question:"How many 4-digit perfect squares exist?", options:["A) 68","B) 67","C) 70","D) 66"], answer:"A" },
+        { question:"Sum of first n naturals =210 ⇒ n=", options:["A) 20","B) 19","C) 21","D) 28"], answer:"A" },
+        { question:"3-digit numbers divisible by 36 count = ", options:["A) 25","B) 24","C) 26","D) 27"], answer:"A" },
+        { question:"Square area 324 cm² side =", options:["A) 18","B) 16","C) 20","D) 17"], answer:"A" },
+        { question:"Average of 10 numbers is 15 and one number 25 replaced by 35, new average =", options:["A) 16","B) 15.5","C) 15.8","D) 16.5"], answer:"A" },
+        { question:"Boat upstream 5 h downstream 3 h; still water speed:stream speed ratio = ", options:["A) 4:1","B) 1:4","C) 3:1","D) 5:1"], answer:"A" },
+        { question:"A,B,C do job in 10,15,20 days. Together time =", options:["A) 4.615","B) 5","C) 6","D) 3"], answer:"A" },
+        { question:"LCM of 84 and 120 =", options:["A) 840","B) 420","C) 1680","D) 240"], answer:"A" },
+        { question:"40 is 20% of x ⇒ x=", options:["A) 200","B) 150","C) 180","D) 100"], answer:"A" },
+        { question:"Probability independent events A=0.6,B=0.5 ⇒ P(A and B)=", options:["A) 0.3","B) 0.1","C) 1.1","D) 0.5"], answer:"A" }
+    ]
+};
+
+let currentQuestions = [];
+let currentIndex = 0;
+let score = 0;
+let timerId;
+let timeLeft = 30;
+
+const loginPage = document.getElementById('login-page');
+const signupPage = document.getElementById('signup-page');
+const subjectPage = document.getElementById('subject-page');
+const quizPage = document.getElementById('quiz-page');
+const errorEl = document.getElementById('error');
+const questionEl = document.getElementById('question');
+const timerEl = document.getElementById('timer');
+const answersEl = document.getElementById('answer-buttons');
+const explanationEl = document.getElementById('explanation');
+const nextBtn = document.getElementById('next-btn');
+
+function showSignup(){
+    loginPage.classList.add('hidden');
+    signupPage.classList.remove('hidden');
+}
+function showLogin(){
+    signupPage.classList.add('hidden');
+    subjectPage.classList.add('hidden');
+    quizPage.classList.add('hidden');
+    loginPage.classList.remove('hidden');
+}
+function signup(){
+    const u=document.getElementById('signup-username').value;
+    const p=document.getElementById('signup-password').value;
+    if(u&&p){
+        localStorage.setItem('user',JSON.stringify({username:u,password:p}));
+        localStorage.setItem('session',Date.now());
+        signupPage.classList.add('hidden');
+        subjectPage.classList.remove('hidden');
+    }
+}
+function login(){
+    errorEl.textContent='';
+    const u=document.getElementById('login-username').value;
+    const p=document.getElementById('login-password').value;
+    const user=JSON.parse(localStorage.getItem('user'));
+    if(user && u===user.username && p===user.password){
+        localStorage.setItem('session',Date.now());
+        loginPage.classList.add('hidden');
+        subjectPage.classList.remove('hidden');
+    } else {
+        errorEl.textContent='Incorrect username or password.';
+    }
+}
+function checkSessionTimeout(){
+    const last=localStorage.getItem('session');
+    if(!last) return true;
+    const now=Date.now();
+    const two=2*60*60*1000;
+    if(now-last>two){
+        alert('Session timed out. Log in again.');
+        localStorage.removeItem('session');
+        showLogin();
+        return true;
+    }
+    localStorage.setItem('session',Date.now());
+    return false;
+}
+function selectSubject(name){
+    if(checkSessionTimeout()) return;
+    currentQuestions = quizData[name].slice(); 
+    currentIndex = 0;
+    score = 0;
+    subjectPage.classList.add('hidden');
+    quizPage.classList.remove('hidden');
+    nextBtn.textContent='Next';
+    showQuestion();
+}
+function showQuestion(){
+    if(checkSessionTimeout()) return;
+    resetState();
+    const q = currentQuestions[currentIndex];
+    questionEl.textContent = (currentIndex+1)+'. '+q.question;
+    q.options.forEach(opt=>{
+        const b=document.createElement('button');
+        b.className='option-btn';
+        b.textContent=opt;
+        answersEl.appendChild(b);
+        b.addEventListener('click',selectAnswer);
+    });
+    timeLeft=30;
+    timerEl.textContent=timeLeft;
+    timerId=setInterval(()=>{
+        timeLeft--;
+        timerEl.textContent=timeLeft;
+        if(timeLeft<=0){
+            clearInterval(timerId);
+            handleTimeout();
+        }
+    },1000);
+}
+function resetState(){
+    clearInterval(timerId);
+    nextBtn.style.display='none';
+    explanationEl.textContent='';
+    while(answersEl.firstChild) answersEl.removeChild(answersEl.firstChild);
+}
+function handleTimeout(){
+    Array.from(answersEl.children).forEach(btn=>{
+        btn.disabled=true;
+        const txt=btn.textContent.trim();
+        if(txt.startsWith(qCorrectPrefix(currentQuestions[currentIndex].answer))) btn.style.background='#28a745';
+    });
+    explanationEl.textContent = getExplanationText(currentQuestions[currentIndex]);
+    nextBtn.style.display='block';
+}
+function qCorrectPrefix(ansLetter){
+    if(ansLetter==='A') return 'A)';
+    if(ansLetter==='B') return 'B)';
+    if(ansLetter==='C') return 'C)';
+    if(ansLetter==='D') return 'D)';
+    return '';
+}
+function selectAnswer(e){
+    clearInterval(timerId);
+    if(checkSessionTimeout()) return;
+    const btn=e.target;
+    const selected=btn.textContent.trim();
+    const correctLetter=currentQuestions[currentIndex].answer;
+    const correctPrefix=qCorrectPrefix(correctLetter);
+    if(selected.startsWith(correctPrefix)){
+        btn.style.background='#28a745';
+        score++;
+    } else {
+        btn.style.background='#ffc107';
+    }
+    Array.from(answersEl.children).forEach(b=>{
+        if(b.textContent.trim().startsWith(correctPrefix)) b.style.background='#28a745';
+        b.disabled=true;
+    });
+    explanationEl.textContent = getExplanationText(currentQuestions[currentIndex]);
+    nextBtn.style.display='block';
+}
+function getExplanationText(q){
+    if (!q.explanation) return '';
+    const ans = q.answer;
+    if (typeof q.explanation === 'object' && q.explanation[ans]) {
+        return q.explanation[ans];
+    }
+    return typeof q.explanation === 'string' ? q.explanation : '';
+}
+function handleNext(){
+    if(checkSessionTimeout()) return;
+    currentIndex++;
+    if(currentIndex<currentQuestions.length) showQuestion();
+    else showScore();
+}
+function showScore(){
+    resetState();
+    questionEl.textContent = `You scored ${score} out of ${currentQuestions.length}!`;
+    nextBtn.textContent='Play Again';
+    nextBtn.style.display='block';
+    nextBtn.onclick = ()=>{
+        subjectPage.classList.remove('hidden');
+        quizPage.classList.add('hidden');
+        nextBtn.onclick = handleNext;
+    };
+}
+document.addEventListener('DOMContentLoaded',()=>{ showLogin(); });
+</script>
+</body>
+</html>
