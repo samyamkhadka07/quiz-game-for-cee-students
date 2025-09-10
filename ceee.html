@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CEE Entrance Quiz Game</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f9;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+.container{background:#fff;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.2);width:420px;text-align:center}
+h2{margin-bottom:15px}
+input{width:90%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:5px}
+.btn{width:95%;padding:10px;margin:8px 0;border:none;border-radius:5px;background:#007bff;color:#fff;cursor:pointer}
+.btn:hover{background:#0056b3}
+.hidden{display:none}
+#error{color:red;font-size:14px;margin-top:5px}
+#next-btn{display:none;background:#28a745}
+#timer{font-size:22px;font-weight:bold;color:#dc3545;margin-top:10px}
+#answer-buttons{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.option-btn{padding:10px;border-radius:6px;border:none;background:#e9ecef;cursor:pointer;text-align:left}
+.option-btn:hover{background:#d6d8db}
+.option-btn.correct{background:#28a745;color:#fff}
+.option-btn.incorrect{background:#ffc107;color:#000}
+.explanation{margin-top:10px;color:#555}
+</style>
+</head>
+<body>
+<div class="container" id="login-page">
+    <h2>Login</h2>
+    <input id="login-username" placeholder="Username" type="text" />
+    <p id="error"></p>
+    <input id="login-password" placeholder="Password" type="password" />
+    <button class="btn" type="button" onclick="login()">Login</button>
+    <p>Don't have an account? <a href="#" onclick="showSignup()">Sign up</a></p>
+</div>
+
+<div class="container hidden" id="signup-page">
+    <h2>Sign Up</h2>
+    <input id="signup-username" placeholder="Choose Username" type="text" />
+    <input id="signup-password" placeholder="Choose Password" type="password" />
+    <button class="btn" type="button" onclick="signup()">Sign Up</button>
+    <p>Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+</div>
+
+<div class="container hidden" id="subject-page">
+    <h2>Choose a Subject</h2>
+    <button class="btn" onclick="selectSubject('physics')">Physics</button>
+    <button class="btn" onclick="selectSubject('chemistry')">Chemistry</button>
+    <button class="btn" onclick="selectSubject('biology')">Biology</button>
+    <button class="btn" onclick="selectSubject('mat')">MAT</button>
+    <button class="btn" onclick="selectSubject('mixed')">Mixed Quiz</button>
+</div>
+
+<div class="container hidden" id="quiz-page">
+    <h2 id="question">Question</h2>
+    <div id="timer">30</div>
+    <div id="answer-buttons"></div>
+    <p class="explanation" id="explanation"></p>
+    <button id="next-btn" class="btn" onclick="handleNext()">Next</button>
+</div>
+
+<script>
+// Quiz data
+const quizData = {
+    physics: [
+        { question:"A particle moves in a circle of radius r with constant speed v. The magnitude of centripetal acceleration is",
+          options:["A) v/r","B) v²/r","C) r v²","D) r/v"], 
+          answer:"B",
+          explanation:"Correct. a_c = v²/r. Incorrect options: A is dimensionally wrong, C and D are incorrect formulas."
+        },
+        { question:"Two satellites orbit Earth in circular orbits of radii R and 4R. If the orbital period of the inner satellite is T, the period of the outer satellite is",
+          options:["A) 2T","B) 4T","C) 8T","D) 16T"], 
+          answer:"C",
+          explanation:"Correct. T2/T1 = (R2/R1)^(3/2) = 8. Incorrect options: A and B are too small, D is too large."
+        },
+        { question:"Mass m attached to string rotates in horizontal circle radius r at angular speed ω. Tension in string equals",
+          options:["A) mω²r","B) mωr","C) m²ωr","D) mω²/r"], 
+          answer:"A",
+          explanation:"Correct. Tension provides centripetal force: F = mω²r. Incorrect options: B is linear momentum, C and D are dimensionally wrong."
+        },
+        { question:"A car negotiates a curve of radius 100 m at speed 20 m/s. The centripetal acceleration is",
+          options:["A) 2 m/s²","B) 4 m/s²","C) 20 m/s²","D) 400 m/s²"], 
+          answer:"B",
+          explanation:"Correct. a_c = v²/r = 400/100 = 4 m/s². Incorrect options: A is too small, C is just speed, D is way too high."
+        },
+        { question:"Stone whirled in vertical circle released at top to reach height h above release point. If release speed is v, maximum extra height h is",
+          options:["A) v²/2g","B) v²/g","C) 2v²/g","D) v/g"], 
+          answer:"A",
+          explanation:"Correct. Extra height h = v²/2g using energy conservation. Incorrect options: B is double, C overestimates, D is dimensionally wrong."
+        }
+    ],
+    chemistry: [
+        { question:"Avogadro's number represents",
+          options:["A) Number of protons in 1 g H", "B) Number of molecules in 1 mole", "C) Mass of 1 mole in grams", "D) Number of electrons in 1 atom"],
+          answer:"B",
+          explanation:"Correct. Avogadro's number (6.022×10²³) is the number of particles in 1 mole. Incorrect options: A is approximate but not definition, C is molar mass, D is incorrect."
+        },
+        { question:"Molarity is defined as",
+          options:["A) moles of solute / mass of solvent", "B) moles of solute / volume of solvent", "C) moles of solute / volume of solution (L)", "D) mass of solute / volume of solution"],
+          answer:"C",
+          explanation:"Correct. Molarity (M) = moles of solute ÷ liters of solution. Incorrect options: A is molality, B uses solvent volume, D gives mass concentration."
+        },
+        { question:"Ideal gas equation is",
+          options:["A) PV = nRT", "B) PV = RT", "C) P = nRT", "D) V = nRT"],
+          answer:"A",
+          explanation:"Correct. Ideal gas law: PV = nRT. Incorrect options: B missing n, C and D rearranged incorrectly."
+        },
+        { question:"pH of a neutral solution at 25°C is",
+          options:["A) 1", "B) 7", "C) 14", "D) 0"],
+          answer:"B",
+          explanation:"Correct. Neutral water has [H⁺] = 1×10⁻⁷ M → pH=7. Incorrect options: A and D are acidic, C is basic."
+        },
+        { question:"Electronegativity is maximum for",
+          options:["A) Fluorine", "B) Oxygen", "C) Chlorine", "D) Nitrogen"],
+          answer:"A",
+          explanation:"Correct. Fluorine has the highest electronegativity (3.98 Pauling scale). Incorrect options: B, C, and D have lower electronegativity."
+        }
+    ],
+    biology: [
+        { question:"Fungi absorb nutrients by",
+          options:["A) saprophytic or parasitic mycelial absorption", "B) photosynthesis", "C) phagocytosis", "D) ingestion"],
+          answer:"A",
+          explanation:"Correct. Fungi secrete enzymes and absorb digested nutrients. Incorrect options: B - fungi are heterotrophs, C - occurs in protozoa, D - fungi don't ingest."
+        },
+        { question:"Fungal cell wall is made of",
+          options:["A) chitin", "B) cellulose", "C) peptidoglycan", "D) lignin"],
+          answer:"A",
+          explanation:"Correct. Chitin forms the rigid fungal cell wall. Incorrect options: B - found in plants, C - in bacteria, D - in plant secondary walls."
+        },
+        { question:"Basidiomycetes show dikaryotic stage after plasmogamy",
+          options:["A) True", "B) False", "C) none", "D) none"],
+          answer:"A",
+          explanation:"Correct. Two nuclei coexist in each cell before karyogamy. Incorrect options: B - dikaryotic stage is characteristic."
+        },
+        { question:"Yeast reproduces by budding",
+          options:["A) True", "B) False", "C) sometimes", "D) none"],
+          answer:"A",
+          explanation:"Correct. Yeast forms a small outgrowth (bud) that grows into a new cell. Incorrect options: B - budding is the main method."
+        },
+        { question:"Mycorrhizae mainly increase uptake of",
+          options:["A) phosphorus", "B) nitrogen", "C) potassium", "D) carbon"],
+          answer:"A",
+          explanation:"Correct. Mycorrhizal fungi extend root surface for phosphorus absorption. Incorrect options: B, C - minor effects, D - plants produce carbon."
+        }
+    ],
+    mat: [
+        { question:"If the cost price is 100 and marked price is 40% above cost, discount 10%, profit% is:", 
+          options:["A) 26%","B) 24%","C) 30%","D) 20%"], 
+          answer:"A",
+          explanation:"Correct. MP = 140, SP = 140 - 14 = 126. Profit% = (26/100)*100 = 26%. Incorrect options: B, C, D are miscalculations."
+        },
+        { question:"Two successive discounts of 10% and 20% equivalent single discount is:", 
+          options:["A) 28%","B) 30%","C) 32%","D) 18%"], 
+          answer:"A",
+          explanation:"Correct. Single discount = 1-(0.9*0.8)=0.28=28%. Incorrect options: B, C, D are miscalculations."
+        },
+        { question:"Shopkeeper marks price 25% above cost and offers 10% discount. Profit%=", 
+          options:["A) 12.5%","B) 10%","C) 15%","D) 5%"], 
+          answer:"A",
+          explanation:"Correct. MP=125, SP=112.5, Profit%=12.5%. Incorrect options: B, C, D are miscalculations."
+        },
+        { question:"A sells to B at 20% profit; B to C at 10% profit; C pays 1188. Original price A paid=", 
+          options:["A) 900","B) 1000","C) 1100","D) 1200"], 
+          answer:"A",
+          explanation:"Correct. Let CP of A = x, SP1 = 1.2x, SP2 = 1.2x*1.1 = 1.32x=1188 → x=900. Incorrect options: B, C, D are miscalculations."
+        },
+        { question:"If article sold at 10% discount and gives 20% profit on cost, mark-up was:", 
+          options:["A) 33.33%","B) 30%","C) 40%","D) 50%"], 
+          answer:"A",
+          explanation:"Correct. SP=1.2*CP, SP=0.9*MP → MP=1.2/0.9=1.3333 → 33.33% mark-up. Incorrect options: B, C, D are miscalculations."
+        }
+    ]
+};
+
+// Application state
+let currentQuestions = [];
+let currentIndex = 0;
+let score = 0;
+let timerId;
+let timeLeft = 30;
+let quizTimerId;
+let quizTimeLeft = 4200; // 70 minutes in seconds
+
+// DOM elements
+const loginPage = document.getElementById('login-page');
+const signupPage = document.getElementById('signup-page');
+const subjectPage = document.getElementById('subject-page');
+const quizPage = document.getElementById('quiz-page');
+const errorEl = document.getElementById('error');
+const questionEl = document.getElementById('question');
+const timerEl = document.getElementById('timer');
+const answersEl = document.getElementById('answer-buttons');
+const explanationEl = document.getElementById('explanation');
+const nextBtn = document.getElementById('next-btn');
+
+// Utility functions
+function getRandomQuestions(arr, n) {
+    if (!Array.isArray(arr) || arr.length === 0) return [];
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy.slice(0, n);
+}
+
+function checkSessionTimeout() {
+    const last = localStorage.getItem('session');
+    if (!last) return true;
+    
+    const now = Date.now();
+    const twoHours = 2 * 60 * 60 * 1000;
+    
+    if (now - last > twoHours) {
+        alert('Session timed out. Log in again.');
+        localStorage.removeItem('session');
+        showLogin();
+        return true;
+    }
+    
+    localStorage.setItem('session', Date.now());
+    return false;
+}
+
+// Navigation functions
+function showSignup() {
+    loginPage.classList.add('hidden');
+    signupPage.classList.remove('hidden');
+    errorEl.textContent = '';
+}
+
+function showLogin() {
+    signupPage.classList.add('hidden');
+    subjectPage.classList.add('hidden');
+    quizPage.classList.add('hidden');
+    loginPage.classList.remove('hidden');
+    errorEl.textContent = '';
+}
+
+function signup() {
+    const username = document.getElementById('signup-username').value;
+    const password = document.getElementById('signup-password').value;
+    
+    if (username && password) {
+        localStorage.setItem('user', JSON.stringify({ username, password }));
+        localStorage.setItem('session', Date.now());
+        signupPage.classList.add('hidden');
+        subjectPage.classList.remove('hidden');
+    } else {
+        errorEl.textContent = 'Please enter both username and password';
+    }
+}
+
+function login() {
+    errorEl.textContent = '';
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    const user = JSON.parse(localStorage.getItem('user'));
+    
+    if (user && username === user.username && password === user.password) {
+        localStorage.setItem('session', Date.now());
+        loginPage.classList.add('hidden');
+        subjectPage.classList.remove('hidden');
+    } else {
+        errorEl.textContent = 'Incorrect username or password.';
+    }
+}
+
+// Quiz functions
+function selectSubject(name) {
+    if (checkSessionTimeout()) return;
+    
+    if (name === 'mixed') {
+        // Create a mixed quiz with questions from all subjects
+        const physicsQs = getRandomQuestions(quizData.physics, 50);
+        const chemistryQs = getRandomQuestions(quizData.chemistry, 50);
+        const biologyQs = getRandomQuestions(quizData.biology, 80);
+        const matQs = getRandomQuestions(quizData.mat, 20);
+        currentQuestions = [...physicsQs, ...chemistryQs, ...biologyQs, ...matQs];
+        currentQuestions = getRandomQuestions(currentQuestions, 200);
+    } else {
+        currentQuestions = getRandomQuestions(quizData[name], 200);
+    }
+    
+    currentIndex = 0;
+    score = 0;
+    subjectPage.classList.add('hidden');
+    quizPage.classList.remove('hidden');
+    nextBtn.textContent = 'Next';
+    
+    // Start the overall quiz timer
+    startQuizTimer();
+    showQuestion();
+}
+
+function startQuizTimer() {
+    quizTimeLeft = 4200; // 70 minutes
+    clearInterval(quizTimerId);
+    
+    quizTimerId = setInterval(() => {
+        quizTimeLeft--;
+        
+        if (quizTimeLeft <= 0) {
+            clearInterval(quizTimerId);
+            clearInterval(timerId);
+            showScore();
+        }
+    }, 1000);
+}
+
+function showQuestion() {
+    if (checkSessionTimeout()) return;
+    resetState();
+    
+    if (currentIndex >= currentQuestions.length) {
+        showScore();
+        return;
+    }
+    
+    const q = currentQuestions[currentIndex];
+    questionEl.textContent = (currentIndex + 1) + '. ' + q.question;
+    
+    q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt;
+        answersEl.appendChild(btn);
+        btn.addEventListener('click', selectAnswer);
+    });
+    
+    timeLeft = 30;
+    timerEl.textContent = timeLeft;
+    
+    timerId = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = timeLeft;
+        
+        if (timeLeft <= 0) {
+            clearInterval(timerId);
+            handleTimeout();
+        }
+    }, 1000);
+}
+
+function resetState() {
+    clearInterval(timerId);
+    nextBtn.style.display = 'none';
+    explanationEl.textContent = '';
+    
+    while (answersEl.firstChild) {
+        answersEl.removeChild(answersEl.firstChild);
+    }
+}
+
+function handleTimeout() {
+    const q = currentQuestions[currentIndex];
+    Array.from(answersEl.children).forEach(btn => {
+        btn.disabled = true;
+        const answerText = btn.textContent.trim();
+        
+        if (answerText.startsWith(q.answer + ')')) {
+            btn.classList.add('correct');
+        }
+    });
+    
+    explanationEl.textContent = q.explanation;
+    nextBtn.style.display = 'block';
+}
+
+function selectAnswer(e) {
+    clearInterval(timerId);
+    if (checkSessionTimeout()) return;
+    
+    const selectedBtn = e.target;
+    const selectedAnswer = selectedBtn.textContent.trim();
+    const q = currentQuestions[currentIndex];
+    const correctAnswer = q.answer + ')';
+    
+    // Disable all buttons
+    Array.from(answersEl.children).forEach(btn => {
+        btn.disabled = true;
+        
+        if (btn.textContent.trim().startsWith(correctAnswer)) {
+            btn.classList.add('correct');
+        }
+        
+        if (btn === selectedBtn && !btn.textContent.trim().startsWith(correctAnswer)) {
+            btn.classList.add('incorrect');
+        }
+    });
+    
+    // Check if answer is correct
+    if (selectedAnswer.startsWith(correctAnswer)) {
+        score++;
+    }
+    
+    explanationEl.textContent = q.explanation;
+    nextBtn.style.display = 'block';
+}
+
+function handleNext() {
+    if (checkSessionTimeout()) return;
+    
+    currentIndex++;
+    if (currentIndex < currentQuestions.length) {
+        showQuestion();
+    } else {
+        showScore();
+    }
+}
+
+function showScore() {
+    resetState();
+    clearInterval(quizTimerId);
+    
+    questionEl.textContent = `You scored ${score} out of ${currentQuestions.length}!`;
+    nextBtn.textContent = 'Play Again';
+    nextBtn.style.display = 'block';
+    nextBtn.onclick = () => {
+        subjectPage.classList.remove('hidden');
+        quizPage.classList.add('hidden');
+    };
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    showLogin();
+});
+</script>
+</body>
+</html>
